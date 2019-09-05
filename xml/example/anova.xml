@@ -285,6 +285,7 @@
           <filters>
             <entry>
               <String>$genoType</String>
+              <int>0</int>
             </entry>
           </filters>
           <statGroups>
@@ -305,9 +306,11 @@
           <filters>
             <entry>
               <String>$environment</String>
+              <int>0</int>
             </entry>
             <entry>
               <String>$genoType</String>
+              <int>0</int>
             </entry>
           </filters>
           <statGroups>
@@ -322,6 +325,7 @@
           <filters>
             <entry>
               <String>$environment</String>
+              <int>0</int>
             </entry>
           </filters>
           <statGroups>
@@ -336,6 +340,7 @@
           <filters>
             <entry>
               <String>expName</String>
+              <int>0</int>
             </entry>
           </filters>
           <statGroups>
@@ -347,6 +352,7 @@
           <filters>
             <entry>
               <String>rowId</String>
+              <int>0</int>
             </entry>
           </filters>
         </Summary>
