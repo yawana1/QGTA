@@ -1,0 +1,8 @@
+package validation;
+
+public class Validation {
+
+	Validation() {
+		
+	}
+}

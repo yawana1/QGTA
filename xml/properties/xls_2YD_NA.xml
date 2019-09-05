@@ -1,0 +1,29 @@
+<XLS>
+	<xlsSummary>
+		<XlsSummary>
+			<summaryType>entrySummary</summaryType>
+			<procName>corn_import.ImportEntryPhenoValues</procName>
+			<procColumns>
+				<String>experiment</String>
+				<String>seasonId</String>
+				<String>traitVatString</String>
+				<String>genoId</String>
+				<String>yield.min</String>
+				<String>yield.max</String>
+				<String>yield.mean</String>
+				<String>yield.sums</String>
+				<String>yield.stdDev</String>
+				<String>yield.estimate</String>
+				<String>moisture.estimate</String>
+				<String>rl.estimate</String>
+				<String>sl.estimate</String>
+				<String>yield.hiCI</String>
+				<String>yield.coreCheck</String>				
+				<String>yield.stability</String>
+				<String>yield.rank</String>
+				<String>yield.count</String>
+			</procColumns>
+			<procStringColumns>experiment,seasonId,traitXlsString,genoId</procStringColumns>
+		</XlsSummary>
+	</xlsSummary>
+</XLS>

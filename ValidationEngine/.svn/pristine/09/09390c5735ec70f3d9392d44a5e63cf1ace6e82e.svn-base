@@ -1,0 +1,47 @@
+package data;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Model {
+
+	private String strName;
+	private Path objPath;
+	private List<Trait> lstTraits;
+	
+	public Model(String strInName,
+		         Path objInPath) {
+		this.strName = strInName;
+		this.objPath = objInPath;
+		this.lstTraits = new ArrayList<Trait>();
+	}
+
+	@Override
+	public boolean equals(Object objIn) {
+		if ((objIn != null) && 
+			(objIn instanceof Model)) {
+			return ((this.strName.equals(((Model)objIn).getName())) && 
+			        (this.objPath.equals(((Model)objIn).getPath())));
+		}
+		else {
+			return false;
+		}
+	}
+	
+	public void addTrait(Trait objInTrait) {
+		this.lstTraits.add(objInTrait);
+	}
+	
+	public String getName() {
+		return this.strName;
+	}
+	
+	public Path getPath() {
+		return this.objPath;
+	}
+	
+	public List<Trait> getTraits() {
+		return this.lstTraits;
+	}
+}

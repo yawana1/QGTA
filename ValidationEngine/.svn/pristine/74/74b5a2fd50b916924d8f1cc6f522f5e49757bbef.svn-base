@@ -1,0 +1,126 @@
+package io;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.NoSuchFieldException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+// The java.util.ArrayList does not have the capability to build 
+// an array of integers from a list of integers.
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.log4j.Logger;
+
+public class ExperimentSummaryReader {
+	
+	static Logger objLogger = Logger.getLogger(ExperimentSummaryReader.class.getName());
+	public static final String TAB = "\t";
+	private List<Integer> lstLocationsNumber;
+	private List<Map<String, String>> lstMapExperimentSummaryData;
+	
+	public ExperimentSummaryReader(Path objInExperimentSummaryFilePath) throws NoSuchFieldException {
+		BufferedReader objBufferedReader;
+		int intLineNumber;
+		String strLine;
+		String[] strArrayHeaders;
+		ArrayList<String> lstHeaders;
+		int intNumberLocationsColumnIndex;
+		String[] strArrayLineParts;
+		int intNumberLocations;
+		Map<String, String> mapDataLine;
+		int intArrayIndex;
+		
+		this.lstLocationsNumber = new ArrayList<Integer>();
+		this.lstMapExperimentSummaryData = new ArrayList<Map<String, String>>();
+		objBufferedReader = null;
+		intLineNumber = 0;
+		strArrayHeaders = null;
+		intNumberLocationsColumnIndex = 0;
+		try {
+			objBufferedReader = new BufferedReader(new FileReader(objInExperimentSummaryFilePath.toFile()));
+			while ((strLine = objBufferedReader.readLine()) != null) {
+				intLineNumber++;
+				if (intLineNumber == 1) {
+					strArrayHeaders = strLine.trim().split(TAB);
+					lstHeaders = new ArrayList<String>(Arrays.asList(strArrayHeaders));
+					System.out.println("Headers: " + lstHeaders.toString());
+					try {
+						if (!(lstHeaders.contains("numberLocations"))) {
+							throw new NoSuchFieldException();
+						}
+						else {
+							intNumberLocationsColumnIndex = lstHeaders.indexOf("numberLocations");
+						}
+					}
+					catch (NoSuchFieldException e) {
+						objLogger.error("ExperimentSummaryReader.ExperimentSummaryReader", 
+				                        e);
+					}
+				}
+				else {
+					strArrayLineParts = strLine.split(TAB,
+							                          strArrayHeaders.length);
+					try {
+						if (strArrayHeaders.length == strArrayLineParts.length) {
+							try {
+								intNumberLocations = Integer.parseInt(strArrayLineParts[intNumberLocationsColumnIndex]);
+								this.lstLocationsNumber.add(intNumberLocations);
+							}
+							catch (NumberFormatException e) {
+								objLogger.error("ExperimentSummaryReader.ExperimentSummaryReader", 
+				                                e);
+							}
+							mapDataLine = new HashMap<String, String>();
+							for (intArrayIndex = 0;
+								 intArrayIndex < strArrayLineParts.length;	
+							     intArrayIndex++) {
+								mapDataLine.put(strArrayHeaders[intArrayIndex], 
+									            strArrayLineParts[intArrayIndex]);
+							}
+							this.lstMapExperimentSummaryData.add(mapDataLine);
+						}
+						else {
+							throw new NoSuchFieldException();
+						}
+					}
+					catch (NoSuchFieldException e) {
+						objLogger.error("ExperimentSummaryReader.ExperimentSummaryReader", 
+			                            e);
+					}	
+				}
+			}
+		}
+		catch (IOException e) {
+			objLogger.error("ExperimentSummaryReader.ExperimentSummaryReader", 
+	                		e);			
+		}
+		finally {
+			try {
+				if (objBufferedReader != null) {
+					objBufferedReader.close();
+				}
+			} 
+			catch (IOException e) {
+				objLogger.error("ExperimentSummaryReader.ExperimentSummaryReader", 
+                		        e);			
+			}
+		}
+	}
+	
+	public int[] getNumberLocations() {
+		int[] intArrayLocationsNumber;
+		
+		intArrayLocationsNumber = ArrayUtils.toPrimitive(this.lstLocationsNumber.toArray(new Integer[this.lstLocationsNumber.size()]));
+		
+		return intArrayLocationsNumber;
+	}
+	
+	public List<Map<String, String>> getData() {
+		return this.lstMapExperimentSummaryData;
+	}
+}

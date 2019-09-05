@@ -1,0 +1,486 @@
+package validation;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.math.stat.correlation.PearsonsCorrelation;
+import org.apache.log4j.Logger;
+
+import asreml.output.AsrVariance;
+import data.xml.objects.App;
+
+import data.Model;
+import data.Report;
+import data.Trait;
+import data.Trial;
+import io.ReportDirectorySimpleFileVisitor;
+import io.ReportWriter;
+import io.WorkDirectorySimpleFileVisitor;
+
+public class Validator {
+	
+	static Logger objLogger = Logger.getLogger(Validator.class.getName());
+	private String[] strArrayPrimaryModelNames;
+	private WorkDirectorySimpleFileVisitor objWorkDirectorySimpleFileVisitor;
+	private List<Trial> lstTrials;
+	private ReportDirectorySimpleFileVisitor objReportDirectorySimpleFileVisitor;
+	private List<Report> lstCurrentReports;
+	private List<Report> lstPreviousReports;	
+	private TreeMap<String, List<Trial>> treMapTrialsByTrait;
+	private ReportWriter objReportWriter;
+	private DateFormat objDataFormat;
+	
+	public Validator(String[] strInArrayPrimaryModelNames) {		
+		this.strArrayPrimaryModelNames = strInArrayPrimaryModelNames;
+	}
+	
+	public void run() {
+		try {
+			this.coverWorkDirectory();
+			this.coverReportDirectory();
+			this.getTrialsByTrait();
+			this.processTraits();
+		}
+		catch (IOException e) {
+			objLogger.error("Validator.run", 
+                            e);
+		}
+	}
+
+	private void coverWorkDirectory() throws IOException {
+		int intPrimaryModelsNumber;
+		
+		try {
+			this.objWorkDirectorySimpleFileVisitor = new WorkDirectorySimpleFileVisitor();
+		}
+		catch (Exception e) {
+			objLogger.error("Validator.coverWorkDirectory", 
+                            e);
+		}
+		Files.walkFileTree(Paths.get(App.INSTANCE.getWorkDirectory()), 
+				           this.objWorkDirectorySimpleFileVisitor);
+		this.lstTrials = this.objWorkDirectorySimpleFileVisitor.getTrials();
+		
+		////////////////////////////////////////////////////////////
+		// Checks the uniqueness of a primary model for each trial  
+		////////////////////////////////////////////////////////////
+		for (Trial objTrial : this.lstTrials) {
+			intPrimaryModelsNumber = 0;
+			for (Model objModel : objTrial.getModels()) {
+				if (this.checkModelNameAsPrimary(objModel.getName())) {
+					intPrimaryModelsNumber = intPrimaryModelsNumber + 1;
+				}
+			}
+			if (intPrimaryModelsNumber == 0) {
+				throw new RuntimeException("The trial, " + objTrial.getName() + ", does not have any primary model");
+			}
+			else {
+				if (intPrimaryModelsNumber != 1) {
+					throw new RuntimeException("The trial, " + objTrial.getName() + ", has more than one primary model");
+				}
+			}
+		}
+		
+		this.getAsrData();
+	}
+
+	private void getAsrData() {
+		int intTrialIndex;
+		int intModelIndex;
+		int intTraitIndex;
+		Path objAsrFilePath;
+		asreml.Trait objAsremlTrait;
+		List<asreml.Trait> lstArsemlTraits;
+		asreml.output.AsrData objAsrData;
+		Map<String,AsrVariance> objAsrVariancesMap;
+		boolean bolBoundedVCs;
+		
+		for (Trial objTrial : this.lstTrials) {
+			intTrialIndex = this.lstTrials.indexOf(objTrial);
+			for (Model objModel : objTrial.getModels()) {
+				intModelIndex = this.lstTrials.get(intTrialIndex).getModels().indexOf(objModel);
+				for (Trait objTrait : objModel.getTraits()) {
+					intTraitIndex = this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits().indexOf(objTrait);
+					///////////////////////////////////////////////////////////////////////////////////////////////
+					// The AsrData class in the Trial Analysis project adds the extension ".asr" to any filename,   
+					// even having the same extension!
+					///////////////////////////////////////////////////////////////////////////////////////////////					
+					objAsrFilePath = FileSystems.getDefault().getPath(objTrait.getPath().toString(), "asreml");
+					objAsremlTrait = new asreml.Trait(objTrait.getName(), 
+							                          0);
+					lstArsemlTraits = new ArrayList<asreml.Trait>();
+                    lstArsemlTraits.add(objAsremlTrait);
+					objAsrData = new asreml.output.AsrData(objAsrFilePath,
+					                                       0,
+					                                       0,
+					                                       0,
+					                                       lstArsemlTraits,
+											               0.0);
+					this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits().get(intTraitIndex).setConverged(objAsrData.isConverged());
+					objAsrVariancesMap = objAsrData.getVariance(objAsremlTrait);
+					if (objAsrVariancesMap.get("Variance") != null) {
+						bolBoundedVCs = this.getBoundedC(objAsrVariancesMap.get("Variance").getC());
+					}
+					else {
+						bolBoundedVCs = false;
+					}
+					this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits().get(intTraitIndex).setBoundedVCs(bolBoundedVCs);
+				}
+			}
+		}
+	}
+	
+	private void coverReportDirectory() throws IOException,
+    										   FileNotFoundException {
+		try {
+			this.objReportDirectorySimpleFileVisitor = new ReportDirectorySimpleFileVisitor();
+		}
+		catch (Exception e) {
+			objLogger.error("Validator.coverReportDirectory", 
+							e);
+		}
+		Files.walkFileTree(Paths.get(App.INSTANCE.getReportDirectory()), 
+						   this.objReportDirectorySimpleFileVisitor);
+		this.lstCurrentReports = this.objReportDirectorySimpleFileVisitor.getCurrentReports();
+		this.lstPreviousReports = this.objReportDirectorySimpleFileVisitor.getPreviousReports();		
+	}
+	
+	private void getTrialsByTrait() {
+		List<Trial> lstTrials;
+		
+		this.treMapTrialsByTrait = new TreeMap<String, List<Trial>>();
+		for (Trial objTrial : this.lstTrials) {
+			for (Model objModel : objTrial.getModels()) {
+				for (Trait objTrait : objModel.getTraits()) { 
+					if (!(this.treMapTrialsByTrait.containsKey(objTrait.getName()))) {
+						lstTrials = new ArrayList<Trial>();
+						lstTrials.add(objTrial);
+						this.treMapTrialsByTrait.put(objTrait.getName(), 
+								                     lstTrials);
+					}
+					else {
+						if (!(this.treMapTrialsByTrait.get(objTrait.getName()).contains(objTrial))) {
+							this.treMapTrialsByTrait.get(objTrait.getName()).add(objTrial);
+						}
+					}
+				}
+			}
+		}
+		try {
+			if (this.treMapTrialsByTrait.isEmpty()) {
+				throw new Exception("No useful trial data for the traits");
+			}
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			objLogger.error("Validator.getTrialsByTrait", 
+							e);
+			throw new RuntimeException();
+		}
+	}
+	
+	private void processTraits() {
+		String[] strArrayHeaders;
+		Iterator<Map.Entry<String, List<Trial>>> iteTrialsByTrait;
+		Map.Entry<String, List<Trial>> objMapEntry;
+		String strTraitName;
+		int intChosenTrialsNumber;
+		int intTotalLocationsNumber;
+		int intTotalRecordsNumber;
+		Report objCurrentReport;
+		int intCurrentReportIndex;
+		Object[] objArrayRowData;
+		double douLocationsNumbersMeans;
+		double douRecordsNumbersMeans;
+		int intLocationsNumber;
+		int intRecordsNumber;
+		double douLocationsNumbersDeviation;
+		double douRecordsNumbersDeviation;
+		int intTrialIndex;
+		int intModelIndex;
+		boolean bolAllModelsConverged;
+		Report objPreviousReport;
+		int intPreviousReportIndex;
+		List<Double> douListX;
+		List<Double> douListY;		
+		double[] douArrayX;
+	    double[] douArrayY;
+		
+		strArrayHeaders = new String[11];
+		strArrayHeaders[ 0] = "Trial Name";
+		strArrayHeaders[ 1] = "Locations Number";
+		strArrayHeaders[ 2] = "Records Number";
+		strArrayHeaders[ 3] = "Deviation of Locations Numbers";
+		strArrayHeaders[ 4] = "Deviation of Records Numbers";
+		strArrayHeaders[ 5] = "All Converge";
+		strArrayHeaders[ 6] = "Spatial Converge";
+		strArrayHeaders[ 7] = "Bounded VCs";
+		strArrayHeaders[ 8] = "Correlation Of estimate (entrySummary)";
+		strArrayHeaders[ 9] = "Correlation Of rawMean (exlSummary)";
+		strArrayHeaders[10] = "Correlation Of estimate (locationSummary)";		
+		
+		this.objReportWriter = new ReportWriter();
+		this.objDataFormat = new SimpleDateFormat("MM_dd_yyyy_HH_mm_ss");
+		iteTrialsByTrait = this.treMapTrialsByTrait.entrySet().iterator();
+		while (iteTrialsByTrait.hasNext())
+		{
+			objMapEntry = (Map.Entry<String, List<Trial>>)iteTrialsByTrait.next();
+			strTraitName = objMapEntry.getKey();
+			this.objReportWriter.createSheet(strTraitName,
+					                         strArrayHeaders);
+			intChosenTrialsNumber = 0;
+			intTotalLocationsNumber = 0;
+			intTotalRecordsNumber = 0;
+			for (Trial objTrial : objMapEntry.getValue()) {
+				objCurrentReport = new Report(objTrial.getName());
+				intCurrentReportIndex = this.lstCurrentReports.indexOf(objCurrentReport);
+				if ((this.lstCurrentReports.get(intCurrentReportIndex).getLocationsNumbers().containsKey(strTraitName)) &&
+					(this.lstCurrentReports.get(intCurrentReportIndex).getRecordsNumbers().containsKey(strTraitName))) {
+					intChosenTrialsNumber = intChosenTrialsNumber + 1;
+					intTotalLocationsNumber = intTotalLocationsNumber + this.lstCurrentReports.get(intCurrentReportIndex).getLocationsNumbers().get(strTraitName);
+					intTotalRecordsNumber = intTotalRecordsNumber + this.lstCurrentReports.get(intCurrentReportIndex).getRecordsNumbers().get(strTraitName);
+				}
+			}
+			if (intChosenTrialsNumber == 0) {
+				System.out.println("No trial data useful for the trait: " + strTraitName);
+			}
+			else {
+				objArrayRowData = new Object[strArrayHeaders.length];
+				douLocationsNumbersMeans = intTotalLocationsNumber / intChosenTrialsNumber;
+				douRecordsNumbersMeans = intTotalRecordsNumber / intChosenTrialsNumber;
+				for (Trial objTrial : objMapEntry.getValue()) {
+					objCurrentReport = new Report(objTrial.getName());
+					intCurrentReportIndex = this.lstCurrentReports.indexOf(objCurrentReport);
+					if ((this.lstCurrentReports.get(intCurrentReportIndex).getLocationsNumbers().containsKey(strTraitName)) &&
+						(this.lstCurrentReports.get(intCurrentReportIndex).getRecordsNumbers().containsKey(strTraitName))) {
+						intLocationsNumber = this.lstCurrentReports.get(intCurrentReportIndex).getLocationsNumbers().get(strTraitName);
+						intRecordsNumber = this.lstCurrentReports.get(intCurrentReportIndex).getRecordsNumbers().get(strTraitName);
+						douLocationsNumbersDeviation = intLocationsNumber - douLocationsNumbersMeans;
+						douRecordsNumbersDeviation = intRecordsNumber - douRecordsNumbersMeans;
+						objArrayRowData[ 0] = objTrial.getName(); 
+						objArrayRowData[ 1] = intLocationsNumber;
+						objArrayRowData[ 2] = intRecordsNumber;
+						objArrayRowData[ 3] = douLocationsNumbersDeviation;
+						objArrayRowData[ 4] = douRecordsNumbersDeviation;
+					}
+					
+					intTrialIndex = this.lstTrials.indexOf(objTrial);
+
+					//////////////////////////////
+					// The column "All Converge"  
+					//////////////////////////////
+					bolAllModelsConverged = true;
+					
+					for (Model objModel : this.lstTrials.get(intTrialIndex).getModels()) {
+						intModelIndex = this.lstTrials.get(intTrialIndex).getModels().indexOf(objModel);
+						for (Trait objTrait : this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits()) {
+							if (objTrait.getName().equals(objMapEntry.getKey())) {
+								bolAllModelsConverged = bolAllModelsConverged && objTrait.getConverged();   
+							}
+						}
+					}
+					objArrayRowData[5] = this.translateBooleanValue(bolAllModelsConverged);
+				
+					/////////////////////////////////////////////////////
+					// The columns "Spatial Converge" and "Bounded VCs"  
+				    /////////////////////////////////////////////////////
+					for (Model objModel : this.lstTrials.get(intTrialIndex).getModels()) {
+						if (this.checkModelNameAsPrimary(objModel.getName())) {
+							intModelIndex = this.lstTrials.get(intTrialIndex).getModels().indexOf(objModel);
+							for (Trait objTrait : this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits()) {
+								if (objTrait.getName().equals(objMapEntry.getKey())) {
+									objArrayRowData[ 6] = this.translateBooleanValue(objTrait.getConverged());
+									objArrayRowData[ 7] = this.translateBooleanValue(objTrait.getBoundedVCs());									
+									break;
+								}
+							}
+							break;
+						}
+					}
+
+					objPreviousReport = new Report(objTrial.getName());
+					intPreviousReportIndex = this.lstPreviousReports.indexOf(objPreviousReport);
+					if (intPreviousReportIndex != -1) {
+						////////////////////////////////////////////////////////
+						// The column "Correlation Of estimate (entrySummary)"   
+						////////////////////////////////////////////////////////
+						douListX = this.lstCurrentReports.get(intCurrentReportIndex).getEntryEstimates().get(strTraitName);
+						douListY = this.lstPreviousReports.get(intPreviousReportIndex).getEntryEstimates().get(strTraitName);
+						if ((douListX.size() != 0) && 
+						    (douListY.size() != 0)) {
+							try {
+								if (douListX.size() != douListY.size()) {
+									throw new Exception("The rows number of both estimate columns in the current and previous entrySummary's do not match in " + 
+											            objTrial.getName());
+								}
+							}
+							catch (Exception e) {
+								this.objReportWriter.closeSheet();
+								this.saveAllProcessedSheetsData();
+								e.printStackTrace();
+								objLogger.error("Validator.processTraits", 
+										        e);
+								throw new RuntimeException();
+							}
+							douArrayX = ArrayUtils.toPrimitive(douListX.toArray(new Double[douListX.size()]));
+						    douArrayY = ArrayUtils.toPrimitive(douListY.toArray(new Double[douListY.size()]));
+						    objArrayRowData[ 8] = this.getPearsonProductMomentCorrelationCoefficient(douArrayX, 
+						    		                                                                 douArrayY);   	
+						}
+						else {
+							objArrayRowData[ 8] = "";
+						}
+					
+						/////////////////////////////////////////////////////
+						// The column "Correlation Of rawMean (exlSummary)"   
+						/////////////////////////////////////////////////////
+						douListX = this.lstCurrentReports.get(intCurrentReportIndex).getExlRawMeans().get(strTraitName);
+						douListY = this.lstPreviousReports.get(intPreviousReportIndex).getExlRawMeans().get(strTraitName);
+						if ((douListX.size() != 0) && 
+							(douListY.size() != 0)) {
+							try {
+								if (douListX.size() != douListY.size()) {
+									throw new Exception("The rows number of bothrawMean columns in the current and previous exlSummary's do not match in " + 
+											            objTrial.getName());
+								}
+							}
+							catch (Exception e) {
+								this.objReportWriter.closeSheet();
+								this.saveAllProcessedSheetsData();
+								e.printStackTrace();
+								objLogger.error("Validator.processTraits", 
+										        e);
+								throw new RuntimeException();
+							}
+							douArrayX = ArrayUtils.toPrimitive(douListX.toArray(new Double[douListX.size()]));
+						    douArrayY = ArrayUtils.toPrimitive(douListY.toArray(new Double[douListY.size()]));
+						    objArrayRowData[ 9] = this.getPearsonProductMomentCorrelationCoefficient(douArrayX, 
+						    		                                                                 douArrayY);   	
+						}
+						else {
+							objArrayRowData[ 9] = "";
+						}
+						
+						///////////////////////////////////////////////////////////
+						// The column "Correlation Of estimate (locationSummary)"   
+						///////////////////////////////////////////////////////////
+						douListX = this.lstCurrentReports.get(intCurrentReportIndex).getLocationEstimates().get(strTraitName);
+						douListY = this.lstPreviousReports.get(intPreviousReportIndex).getLocationEstimates().get(strTraitName);
+						if ((douListX.size() != 0) && 
+							(douListY.size() != 0)) {
+							try {
+								if (douListX.size() != douListY.size()) {
+									throw new Exception("The rows number of both estimate columns in the current and previous locationSummary's do not match in " + 
+											            objTrial.getName());
+								}
+							}
+							catch (Exception e) {
+								this.objReportWriter.closeSheet();
+								this.saveAllProcessedSheetsData();
+								e.printStackTrace();
+								objLogger.error("Validator.processTraits", 
+										        e);
+								throw new RuntimeException();
+							}
+							douArrayX = ArrayUtils.toPrimitive(douListX.toArray(new Double[douListX.size()]));
+						    douArrayY = ArrayUtils.toPrimitive(douListY.toArray(new Double[douListY.size()]));
+						    objArrayRowData[10] = this.getPearsonProductMomentCorrelationCoefficient(douArrayX, 
+						    		                                                                 douArrayY);   	
+						}
+						else {
+							objArrayRowData[10] = "";
+						}
+					}
+					else {
+						objArrayRowData[ 8] = "";
+						objArrayRowData[ 9] = "";
+						objArrayRowData[10] = "";
+					}
+					
+					//////////////////////////////////////////
+					// Writing the row data in the worksheet    
+					//////////////////////////////////////////
+					this.objReportWriter.writeRowData(objArrayRowData);
+				}
+			}
+			this.objReportWriter.closeSheet();
+		}
+		this.saveAllProcessedSheetsData();
+	}
+
+	private boolean checkModelNameAsPrimary(String strInModelName) {
+		/////////////////////////////////////////////////////////////////
+		// It gives a better performance without making any extra work   
+		// to build a list from the array                                
+		///////////////////////////////////////////////////////////////// 
+		if (Arrays.asList(this.strArrayPrimaryModelNames).contains(strInModelName)) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
+	private boolean getBoundedC(String strInC) {
+		if (strInC == null) { 
+			return false; }
+		
+		return (!(strInC.equals("P")));
+	}
+	
+	private String translateBooleanValue(boolean bolInValue) {
+		if (bolInValue == true) {
+			return "Yes";
+		}
+		else {
+			return "No";
+		}
+	}
+	
+	private double getPearsonProductMomentCorrelationCoefficient(double[] douInArrayX,
+			                                                     double[] douInArrayY) {
+		double douPearsonProductMomentCorrelationCoefficient;
+		
+		douPearsonProductMomentCorrelationCoefficient = 0;
+		try {
+			douPearsonProductMomentCorrelationCoefficient = new PearsonsCorrelation().correlation(douInArrayX, 
+                                                                                                  douInArrayY);
+		}
+		catch (IllegalArgumentException e) {
+			this.objReportWriter.closeSheet();
+			this.saveAllProcessedSheetsData();
+			System.err.println("Exception in trying to make the Pearson's correlation coefficient");
+			e.printStackTrace();
+			objLogger.error("Validator.getPearsonProductMomentCorrelationCoefficient", 
+			                e);
+			throw new RuntimeException();
+		}
+		
+		return douPearsonProductMomentCorrelationCoefficient;
+	}
+	
+	private void saveAllProcessedSheetsData() {
+		//////////////////////////////////////////////
+		// Writing all the the data in the .xls file    
+		//////////////////////////////////////////////
+		this.objReportWriter.close(System.getProperty("user.dir") + 
+						           System.getProperty("file.separator") + 
+	                               "report_" +
+	                               this.objDataFormat.format(new Date()) + 
+	                               ".xls");
+	}
+}

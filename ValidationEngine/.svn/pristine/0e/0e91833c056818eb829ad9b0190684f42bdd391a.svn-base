@@ -1,0 +1,199 @@
+package io;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.NoSuchFieldException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+public class EntrySummaryReader {
+
+	static Logger objLogger = Logger.getLogger(EntrySummaryReader.class.getName());
+	public static final String TAB = "\t";
+	private Map<String, Integer> mapRecordsNumbers;
+	private Map<String, List<Double>> mapEstimates;
+	private List<Map<String, String>> lstMapEntrySummaryData;
+	
+	public EntrySummaryReader(Path objInEntrySummaryFilePath) throws NoSuchFieldException {
+		BufferedReader objBufferedReader;
+		int intLineNumber;
+		String strLine;
+		String[] strArrayHeaders;
+		ArrayList<String> lstHeaders;
+		int intTraitNameColumnIndex;
+		int intEstimateColumnIndex;
+		String[] strArrayLineParts;
+		String strTraitName;
+		double douEstimate;
+		List<Double> lstEstimates;
+		Map<String, String> mapDataLine;
+		int intArrayIndex;
+		
+		this.mapRecordsNumbers =  new HashMap<String, Integer>();
+		this.mapEstimates = new HashMap<String, List<Double>>();
+		this.lstMapEntrySummaryData = new ArrayList<Map<String, String>>();
+		objBufferedReader = null;
+		intLineNumber = 0;
+		strArrayHeaders = null;
+		intTraitNameColumnIndex = 0;
+		intEstimateColumnIndex = 0;
+		try {
+			objBufferedReader = new BufferedReader(new FileReader(objInEntrySummaryFilePath.toFile()));
+			while ((strLine = objBufferedReader.readLine()) != null) {
+				intLineNumber++;
+				////////////////
+				// The headers  
+				////////////////
+				if (intLineNumber == 1) {
+					strArrayHeaders = strLine.trim().split(TAB);
+					lstHeaders = new ArrayList<String>(Arrays.asList(strArrayHeaders));
+					//System.out.println("Headers: " + lstHeaders.toString());
+					try {
+						///////////////////
+						// Records Number  
+						///////////////////
+						if (!(lstHeaders.contains("traitVatString"))) {
+							throw new NoSuchFieldException("No traitVatString column in " + 
+						                                   objInEntrySummaryFilePath.toString());
+						}
+						else {
+							intTraitNameColumnIndex = lstHeaders.indexOf("traitVatString");
+						}
+
+						///////////////////
+						// Estimates List  
+						///////////////////
+						if (!(lstHeaders.contains("estimate"))) {
+							throw new NoSuchFieldException("No estimate column in " + 
+	                                                       objInEntrySummaryFilePath.toString());
+						}
+						else {
+							intEstimateColumnIndex = lstHeaders.indexOf("estimate");
+						}
+					}
+					catch (NoSuchFieldException e) {
+						e.printStackTrace();
+						objLogger.error("EntrySummaryReader.EntrySummaryReader", 
+						                e);
+						throw new RuntimeException();
+					}
+				}
+				///////////////////
+				// The data lines  
+				///////////////////
+				else {
+					strArrayLineParts = strLine.split(TAB,
+	                                                  strArrayHeaders.length);
+					try {
+						if (strArrayHeaders.length == strArrayLineParts.length) {
+							strTraitName = strArrayLineParts[intTraitNameColumnIndex];
+							
+							///////////////////
+							// Records Number  
+							///////////////////
+							if (this.mapRecordsNumbers.containsKey(strTraitName)) {
+								this.mapRecordsNumbers.put(strTraitName, 
+										                   (this.mapRecordsNumbers.get(strTraitName) + 1));
+							}
+							else {
+								this.mapRecordsNumbers.put(strTraitName, 
+						                                   1);
+							}
+
+							///////////////////
+							// Estimates List  
+							///////////////////
+							/////////////////////////////////////////////////////////////////////////////////
+							// Note: There is sometimes not data in the estimate column for determined rows  
+							/////////////////////////////////////////////////////////////////////////////////
+							if (strArrayLineParts[intEstimateColumnIndex].equals("")) {
+								System.err.println("No data in the estimate column in " + objInEntrySummaryFilePath.toString() + 
+								                   " in the row #" + intLineNumber);
+							}
+							else {
+								try {
+									if (this.mapEstimates.containsKey(strTraitName)) {
+										lstEstimates = this.mapEstimates.get(strTraitName);
+									}
+									else {
+										lstEstimates = new ArrayList<Double>();
+									}
+									douEstimate = Double.parseDouble(strArrayLineParts[intEstimateColumnIndex]);
+									lstEstimates.add(douEstimate);
+									this.mapEstimates.put(strTraitName, 
+								                      	  lstEstimates);
+								}
+								catch (NumberFormatException e) {
+									e.printStackTrace();
+									objLogger.error("EntrySummaryReader.EntrySummaryReader", 
+				                                	e);
+									throw new RuntimeException();
+								}
+							}
+
+							//////////////
+							// Data Line 
+							//////////////
+							mapDataLine = new HashMap<String, String>();
+							for (intArrayIndex = 0;
+								 intArrayIndex < strArrayLineParts.length;	
+							     intArrayIndex++) {
+								mapDataLine.put(strArrayHeaders[intArrayIndex], 
+									            strArrayLineParts[intArrayIndex]);
+							}
+							this.lstMapEntrySummaryData.add(mapDataLine);
+						}
+						else {
+							throw new NoSuchFieldException("Inconsistency in the headers and fields numbers in " + 
+                                                           objInEntrySummaryFilePath.toString());
+						}
+					}
+					catch (NoSuchFieldException e) {
+						e.printStackTrace();
+						objLogger.error("EntrySummaryReader.EntrySummaryReader", 
+				                        e);
+						throw new RuntimeException();
+					}
+				}
+			}
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+			objLogger.error("EntrySummaryReader.EntrySummaryReader", 
+					        e);
+			throw new RuntimeException();
+		}
+		finally {
+			try {
+				if (objBufferedReader != null) {
+					objBufferedReader.close();
+				}
+			} 
+			catch (IOException e) {
+				e.printStackTrace();
+				objLogger.error("EntrySummaryReader.EntrySummaryReader", 
+				                e);
+				throw new RuntimeException();
+			}
+		}
+	}
+	
+	public Map<String, Integer> getRecordsNumbers() {
+		return this.mapRecordsNumbers;
+	}
+
+	public Map<String, List<Double>> getEstimates() {
+		return this.mapEstimates;
+	}
+
+	public List<Map<String, String>> getData() {
+		return this.lstMapEntrySummaryData;
+	}	
+}

@@ -1,0 +1,335 @@
+package validation;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.Math;
+import java.nio.file.Files;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import org.apache.log4j.Logger;
+
+import asreml.output.AsrVariance;
+import data.xml.objects.App;
+
+import data.Model;
+import data.Report;
+import data.Trait;
+import data.Trial;
+import io.ReportDirectorySimpleFileVisitor;
+import io.ReportWriter;
+import io.WorkDirectorySimpleFileVisitor;
+
+public class Validator {
+	
+	static Logger objLogger = Logger.getLogger(Validator.class.getName());
+	private static final String TAB = "\t";
+	private WorkDirectorySimpleFileVisitor objWorkDirectorySimpleFileVisitor;
+	private List<Trial> lstTrials;
+	private ReportDirectorySimpleFileVisitor objReportDirectorySimpleFileVisitor;
+	private List<Report> lstReports;
+	private TreeMap<String, List<Trial>> treMapTrialsByTrait;
+	
+	public Validator() {}
+	
+	public void run() {
+		try {
+			this.coverWorkDirectory();
+			this.coverReportDirectory();
+			this.getTrialsByTrait();
+			this.processTraits();
+		}
+		catch (IOException e) {
+			objLogger.error("Validator.run", 
+                            e);
+		}
+	}
+
+	private void coverWorkDirectory() throws IOException {
+		try {
+			this.objWorkDirectorySimpleFileVisitor = new WorkDirectorySimpleFileVisitor();
+		}
+		catch (Exception e) {
+			objLogger.error("Validator.coverWorkDirectory", 
+                            e);
+		}
+		Files.walkFileTree(Paths.get(App.INSTANCE.getWorkDirectory()), 
+				                     this.objWorkDirectorySimpleFileVisitor);
+		this.lstTrials = this.objWorkDirectorySimpleFileVisitor.getTrials();
+		this.getAsrData();
+	}
+
+	private void getAsrData() {
+		int intTrialIndex;
+		int intModelIndex;
+		int intTraitIndex;
+		Path objAsrFilePath;
+		asreml.Trait objAsremlTrait;
+		List<asreml.Trait> lstArsemlTraits;
+		asreml.output.AsrData objAsrData;
+		Map<String,AsrVariance> objAsrVariancesMap;
+		boolean bolBoundedVCs;
+		
+		for (Trial objTrial : this.lstTrials) {
+			intTrialIndex = this.lstTrials.indexOf(objTrial);
+			for (Model objModel : objTrial.getModels()) {
+				intModelIndex = this.lstTrials.get(intTrialIndex).getModels().indexOf(objModel);
+				for (Trait objTrait : objModel.getTraits()) {
+					intTraitIndex = this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits().indexOf(objTrait);
+					///////////////////////////////////////////////////////////////////////////////////////////////
+					// The AsrData class in the Trial Analysis project adds the extension ".asr" to any filename,   
+					// even having the same extension!
+					///////////////////////////////////////////////////////////////////////////////////////////////					
+					objAsrFilePath = FileSystems.getDefault().getPath(objTrait.getPath().toString(), "asreml");
+					objAsremlTrait = new asreml.Trait(objTrait.getName(), 
+							                          0);
+					lstArsemlTraits = new ArrayList<asreml.Trait>();
+                    lstArsemlTraits.add(objAsremlTrait);
+					objAsrData = new asreml.output.AsrData(objAsrFilePath,
+					                                       0,
+					                                       0,
+					                                       0,
+					                                       lstArsemlTraits,
+											               0.0);
+					//System.out.println(objAsrFilePath.toString() + ".asr");
+					this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits().get(intTraitIndex).setConverged(objAsrData.isConverged());
+					//if (objAsrData.isConverged()) {
+					//	System.out.println("Converged...");
+					//}
+					//else {
+					//	System.out.println("NOT converged...");
+					//}
+					objAsrVariancesMap = objAsrData.getVariance(objAsremlTrait);
+					if (objAsrVariancesMap.get("Variance") != null) {
+						bolBoundedVCs = this.getBoundedC(objAsrVariancesMap.get("Variance").getC());
+					}
+					else {
+						bolBoundedVCs = false;
+					}
+					this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits().get(intTraitIndex).setBoundedVCs(bolBoundedVCs);
+					//if (bolBoundedVCs) {
+					//	System.out.println("Bounded VCs...");
+					//}
+					//else {
+					//	System.out.println("NOT bounded VCs...");
+					//}
+				}
+			}
+		}
+	}
+	
+	private void coverReportDirectory() throws IOException,
+    										   FileNotFoundException {
+		try {
+			this.objReportDirectorySimpleFileVisitor = new ReportDirectorySimpleFileVisitor();
+		}
+		catch (Exception e) {
+			objLogger.error("Validator.coverReportDirectory", 
+							e);
+		}
+		Files.walkFileTree(Paths.get(App.INSTANCE.getReportDirectory()), 
+						   this.objReportDirectorySimpleFileVisitor);
+		this.lstReports = this.objReportDirectorySimpleFileVisitor.getReports();
+	}
+	
+	private void getTrialsByTrait() {
+		List<Trial> lstTrials;
+		
+		this.treMapTrialsByTrait = new TreeMap<String, List<Trial>>();
+		for (Trial objTrial : this.lstTrials) {
+			for (Model objModel : objTrial.getModels()) {
+				for (Trait objTrait : objModel.getTraits()) { 
+					if (!(this.treMapTrialsByTrait.containsKey(objTrait.getName()))) {
+						lstTrials = new ArrayList<Trial>();
+						lstTrials.add(objTrial);
+						this.treMapTrialsByTrait.put(objTrait.getName(), 
+								                     lstTrials);
+					}
+					else {
+						if (!(this.treMapTrialsByTrait.get(objTrait.getName()).contains(objTrial))) {
+							this.treMapTrialsByTrait.get(objTrait.getName()).add(objTrial);
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	private void processTraits() {
+		String[] strArrayHeaders;
+		ReportWriter objReportWriter;
+		DateFormat objDataFormat;
+		Iterator<Map.Entry<String, List<Trial>>> iteTrialsByTrait;
+		Map.Entry<String, List<Trial>> objMapEntry;
+		String strTraitName;
+		int intChosenTrialsNumber;
+		int intTotalLocationsNumber;
+		int intTotalRecordsNumber;
+		Report objReport;
+		int intReportIndex;
+		Object[] objArrayRowData;
+		double douLocationsNumbersMeans;
+		double douRecordsNumbersMeans;
+		int intLocationsNumber;
+		int intRecordsNumber;
+		double douLocationsNumbersDeviation;
+		double douRecordsNumbersDeviation;
+		int intTrialIndex;
+		int intModelIndex;
+		boolean bolAllModelsConverged;
+		
+		strArrayHeaders = new String[8];
+		strArrayHeaders[0] = "Trial Name";
+		strArrayHeaders[1] = "Locations Number";
+		strArrayHeaders[2] = "Records Number";
+		strArrayHeaders[3] = "Deviation of Locations Numbers";
+		strArrayHeaders[4] = "Deviation of Records Numbers";
+		strArrayHeaders[5] = "All Converge";
+		strArrayHeaders[6] = "Spatial Converge";
+		strArrayHeaders[7] = "Bounded VCs";		
+		objReportWriter = new ReportWriter();
+		objDataFormat = new SimpleDateFormat("MM_dd_yyyy_HH_mm_ss");
+		iteTrialsByTrait = this.treMapTrialsByTrait.entrySet().iterator();
+		while (iteTrialsByTrait.hasNext())
+		{
+			objMapEntry = (Map.Entry<String, List<Trial>>)iteTrialsByTrait.next();
+			strTraitName = objMapEntry.getKey();
+			objReportWriter.createSheet(strTraitName,
+					                    strArrayHeaders);
+			//System.out.println();
+			//System.out.println("Table Trait " + strTraitName);
+			//System.out.println("Trial Name" + TAB + 
+			//		           "Locations #" + TAB + 
+			//		           "Records #" + TAB + 
+			//		           "Deviation of Locations #" + TAB + 
+			//		           "Deviation of Records #" + TAB +
+			//		           "All Converge" + TAB +
+			//		           "Spatial Converge" + TAB +
+			//		           "Bounded VCs");
+
+			intChosenTrialsNumber = 0;
+			intTotalLocationsNumber = 0;
+			intTotalRecordsNumber = 0;
+			for (Trial objTrial : objMapEntry.getValue()) {
+				objReport = new Report(objTrial.getName());
+				intReportIndex = this.lstReports.indexOf(objReport);
+				if ((this.lstReports.get(intReportIndex).getLocationsNumbers().containsKey(strTraitName)) &&
+					(this.lstReports.get(intReportIndex).getRecordsNumbers().containsKey(strTraitName))) {
+					intChosenTrialsNumber = intChosenTrialsNumber + 1;
+					intTotalLocationsNumber = intTotalLocationsNumber + this.lstReports.get(intReportIndex).getLocationsNumbers().get(strTraitName);
+					intTotalRecordsNumber = intTotalRecordsNumber + this.lstReports.get(intReportIndex).getRecordsNumbers().get(strTraitName);
+				}
+			}
+			if (intChosenTrialsNumber == 0) {
+				//System.out.println("No data");
+			}
+			else {
+				objArrayRowData = new Object[strArrayHeaders.length];
+				douLocationsNumbersMeans = intTotalLocationsNumber / intChosenTrialsNumber;
+				douRecordsNumbersMeans = intTotalRecordsNumber / intChosenTrialsNumber;
+				for (Trial objTrial : objMapEntry.getValue()) {
+					objReport = new Report(objTrial.getName());
+					intReportIndex = this.lstReports.indexOf(objReport);
+					if ((this.lstReports.get(intReportIndex).getLocationsNumbers().containsKey(strTraitName)) &&
+						(this.lstReports.get(intReportIndex).getRecordsNumbers().containsKey(strTraitName))) {
+						intLocationsNumber = this.lstReports.get(intReportIndex).getLocationsNumbers().get(strTraitName);
+						intRecordsNumber = this.lstReports.get(intReportIndex).getRecordsNumbers().get(strTraitName);
+						douLocationsNumbersDeviation = Math.abs(intLocationsNumber - douLocationsNumbersMeans);
+						douRecordsNumbersDeviation = Math.abs(intRecordsNumber - douRecordsNumbersMeans);
+						objArrayRowData[0] = objTrial.getName(); 
+						objArrayRowData[1] = intLocationsNumber;
+						objArrayRowData[2] = intRecordsNumber;
+						objArrayRowData[3] = douLocationsNumbersDeviation;
+						objArrayRowData[4] = douRecordsNumbersDeviation;
+						//System.out.print(objTrial.getName() + TAB + 
+						//           	   intLocationsNumber + TAB + 
+				        //                 intRecordsNumber + TAB + 
+				        //                 douLocationsNumbersDeviation + TAB + 
+				        //                 douRecordsNumbersDeviation + TAB);
+					}
+					
+					intTrialIndex = this.lstTrials.indexOf(objTrial);
+
+					//////////////////////////////
+					// The column "All Converge"  
+					//////////////////////////////
+					bolAllModelsConverged = true;
+					
+					for (Model objModel : this.lstTrials.get(intTrialIndex).getModels()) {
+						intModelIndex = this.lstTrials.get(intTrialIndex).getModels().indexOf(objModel);
+						for (Trait objTrait : this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits()) {
+							if (objTrait.getName().equals(objMapEntry.getKey())) {
+								bolAllModelsConverged = bolAllModelsConverged && objTrait.getConverged();   
+							}
+						}
+					}
+					objArrayRowData[5] = this.translateBooleanValue(bolAllModelsConverged);
+					//System.out.print(this.translateBooleanValue(bolAllModelsConverged) + TAB);
+				
+					/////////////////////////////////////////////////////
+					// The columns "Spatial Converge" and "Bounded VCs"  
+				    /////////////////////////////////////////////////////
+					for (Model objModel : this.lstTrials.get(intTrialIndex).getModels()) {
+						if (objModel.getName().equals("anova")) {
+							intModelIndex = this.lstTrials.get(intTrialIndex).getModels().indexOf(objModel);
+							for (Trait objTrait : this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits()) {
+								if (objTrait.getName().equals(objMapEntry.getKey())) {
+									objArrayRowData[6] = this.translateBooleanValue(objTrait.getConverged());
+									objArrayRowData[7] = this.translateBooleanValue(objTrait.getBoundedVCs());									
+									//System.out.print(this.translateBooleanValue(objTrait.getConverged()) + TAB +
+									//		         this.translateBooleanValue(objTrait.getBoundedVCs()));
+									break;
+								}
+							}
+							break;
+						}
+					}
+					
+					////////////////////////////////////////////////////////////////////////
+					// The columns "Correlation of Solution" and "Correlation of Estimate"  
+					////////////////////////////////////////////////////////////////////////
+					
+					//////////////////////////////////////////
+					// Writing the row data in the worksheet    
+					//////////////////////////////////////////
+					objReportWriter.writeRowData(objArrayRowData);
+					//System.out.println();
+				}
+			}
+			objReportWriter.closeSheet();
+		}
+		//////////////////////////////////////////////
+		// Writing all the the data in the .xls file    
+		//////////////////////////////////////////////
+		objReportWriter.close(System.getProperty("user.home") + 
+						      System.getProperty("file.separator") + 
+	                          "report_" +
+	                          objDataFormat.format(new Date()) + 
+	                          ".xls");
+	}
+	
+	private boolean getBoundedC(String strInC) {
+		if (strInC == null) { 
+			return false; }
+		
+		return (!(strInC.equals("P")));
+	}
+	
+	private String translateBooleanValue(boolean bolInValue) {
+		if (bolInValue == true) {
+			return "Yes";
+		}
+		else {
+			return "No";
+		}
+	}
+}

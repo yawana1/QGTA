@@ -1,0 +1,236 @@
+package io;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.NoSuchFieldException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import org.apache.log4j.Logger;
+
+public class ExlSummaryReader {
+
+	static Logger objLogger = Logger.getLogger(ExlSummaryReader.class.getName());
+	public static final String TAB = "\t";
+	private Map<String, Map<String, Double>> mapRawMeans;
+	private List<Map<String, String>> lstMapExlSummaryData;
+
+	public ExlSummaryReader(Path objInExlSummaryFilePath) throws NoSuchFieldException {
+		BufferedReader objBufferedReader;
+		int intLineNumber;
+		String strLine;
+		String[] strArrayHeaders;
+		ArrayList<String> lstHeaders;
+		int intTraitNameColumnIndex;
+		int intGenoIdColumnIndex;
+		int intLocIdColumnIndex;
+		int intRawMeanColumnIndex;
+		String[] strArrayLineParts;
+		String strTraitName;
+		Map<String, Double> mapRawMeans;
+		Map<String, String> mapDataLine;
+		int intArrayIndex;
+		Map<String, Double> objTreeMap;
+		
+		this.mapRawMeans = new HashMap<String, Map<String, Double>>();
+		this.lstMapExlSummaryData = new ArrayList<Map<String, String>>();
+		objBufferedReader = null;
+		intLineNumber = 0;
+		strArrayHeaders = null;
+		intTraitNameColumnIndex = -1;
+		intGenoIdColumnIndex = -1;
+		intLocIdColumnIndex = -1;
+		intRawMeanColumnIndex = -1;
+		try {
+			objBufferedReader = new BufferedReader(new FileReader(objInExlSummaryFilePath.toFile()));
+			while ((strLine = objBufferedReader.readLine()) != null) {
+				intLineNumber++;
+				////////////////
+				// The headers  
+				////////////////
+				if (intLineNumber == 1) {
+					strArrayHeaders = strLine.trim().split(TAB);
+					lstHeaders = new ArrayList<String>(Arrays.asList(strArrayHeaders));
+					//System.out.println("Headers: " + lstHeaders.toString());
+					try {
+						///////////////////
+						// traitVatString 
+						///////////////////
+						if (!(lstHeaders.contains("traitVatString"))) {
+							throw new NoSuchFieldException("No traitVatString column in " + 
+	                                                       objInExlSummaryFilePath.toString());
+						}
+						else {
+							intTraitNameColumnIndex = lstHeaders.indexOf("traitVatString");
+						}
+						
+						///////////
+						// genoId  
+						///////////
+						if (!(lstHeaders.contains("genoId"))) {
+							throw new NoSuchFieldException("No genoId column in " + 
+						                                   objInExlSummaryFilePath.toString());
+						}
+						else {
+							intGenoIdColumnIndex = lstHeaders.indexOf("genoId");
+						}
+						
+						//////////
+						// locId  
+						//////////
+						if (!(lstHeaders.contains("locId"))) {
+							throw new NoSuchFieldException("No locId column in " + 
+						                                   objInExlSummaryFilePath.toString());
+						}
+						else {
+							intLocIdColumnIndex = lstHeaders.indexOf("locId");
+						}
+						
+						////////////
+						// rawMean    
+						////////////
+						if (!(lstHeaders.contains("rawMean"))) {
+							throw new NoSuchFieldException("No rawMean column in " + 
+                                                           objInExlSummaryFilePath.toString());
+						}
+						else {
+							intRawMeanColumnIndex = lstHeaders.indexOf("rawMean");
+						}
+					}
+					catch (NoSuchFieldException e) {
+						e.printStackTrace();
+						objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+						                e);
+						throw new RuntimeException();
+					}
+				}
+				///////////////////
+				// The data lines  
+				///////////////////
+				else {
+					strArrayLineParts = strLine.split(TAB,
+	                                                  strArrayHeaders.length);
+					try {
+						if (strArrayHeaders.length == strArrayLineParts.length) {
+							strTraitName = strArrayLineParts[intTraitNameColumnIndex];
+							
+							///////////////////
+							// Raw Means List  
+							///////////////////
+							try {
+								if (this.mapRawMeans.containsKey(strTraitName)) {
+									mapRawMeans = this.mapRawMeans.get(strTraitName);
+								}
+								else {
+									mapRawMeans = new HashMap<String, Double>();
+								}
+								////////////////////////////////////////////
+								// Checking if the genoId value is numeric  
+								////////////////////////////////////////////
+								try {
+									Integer.parseInt(strArrayLineParts[intGenoIdColumnIndex]);
+								}
+								catch (NumberFormatException e) {
+									e.printStackTrace();
+									objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+					                                e);
+									throw new RuntimeException();
+								}
+								////////////////////////////////////////////
+								// Checking if the locId value is numeric  
+								////////////////////////////////////////////
+								try {
+									Integer.parseInt(strArrayLineParts[intLocIdColumnIndex]);
+								}
+								catch (NumberFormatException e) {
+									e.printStackTrace();
+									objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+					                                e);
+									throw new RuntimeException();
+								}
+								//////////////////////////////////
+								// A two-value key: genoId_locId  
+								//////////////////////////////////
+								mapRawMeans.put(strArrayLineParts[intGenoIdColumnIndex] + "_" + strArrayLineParts[intLocIdColumnIndex], 
+										        Double.parseDouble(strArrayLineParts[intRawMeanColumnIndex]));
+								this.mapRawMeans.put(strTraitName, 
+											         mapRawMeans);
+							}
+							catch (NumberFormatException e) {
+								e.printStackTrace();
+								objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+				                                e);
+								throw new RuntimeException();
+							}
+							
+							//////////////
+							// Data Line 
+							//////////////
+							mapDataLine = new HashMap<String, String>();
+							for (intArrayIndex = 0;
+								 intArrayIndex < strArrayLineParts.length;	
+								 intArrayIndex++) {
+								mapDataLine.put(strArrayHeaders[intArrayIndex], 
+										        strArrayLineParts[intArrayIndex]);
+							}
+							this.lstMapExlSummaryData.add(mapDataLine);
+						}
+						else {
+							throw new NoSuchFieldException("Inconsistency in the headers and fields numbers in " + 
+                                                           objInExlSummaryFilePath.toString());
+						}
+					}
+					catch (NoSuchFieldException e) {
+						e.printStackTrace();
+						objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+				                        e);
+						throw new RuntimeException();
+					}
+				}
+			}
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+			objLogger.error("ExlSummaryReader.EntrySummaryReader", 
+			                e);
+			throw new RuntimeException();
+		}
+		finally {
+			try {
+				if (objBufferedReader != null) {
+					objBufferedReader.close();
+				}
+			} 
+			catch (IOException e) {
+				e.printStackTrace();
+				objLogger.error("ExlSummaryReader.EntrySummaryReader", 
+		                        e);	
+				throw new RuntimeException();
+			}
+		}
+		
+		/////////////////////////////////////////////////
+		// Sorts each rawmeans map basing on the genoId  
+		/////////////////////////////////////////////////
+		for (String strKey : this.mapRawMeans.keySet()) {
+			mapRawMeans = this.mapRawMeans.get(strKey);
+			objTreeMap = new TreeMap<String, Double>(mapRawMeans);
+			this.mapRawMeans.put(strKey,
+					             objTreeMap);
+		}		
+	}	
+	
+	public Map<String, Map<String, Double>> getRawMeans() {
+		return this.mapRawMeans;
+	}
+	
+	public List<Map<String, String>> getData() {
+		return this.lstMapExlSummaryData;
+	}		
+}

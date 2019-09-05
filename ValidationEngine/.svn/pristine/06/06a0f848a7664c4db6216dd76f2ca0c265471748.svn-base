@@ -1,0 +1,109 @@
+package io;
+
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+
+import org.apache.log4j.Logger;
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
+
+public class ModelXMLFileParser extends DefaultHandler {
+	
+	static Logger objLogger = Logger.getLogger(ModelDirectorySimpleFileVisitor.class.getName());
+	private boolean bolCrop;
+	private String strCropName;
+	private boolean bolExperimentNames;
+	private boolean bolString;
+	private Set<String> setExperimentNames;
+	private SAXParserFactory objSAXParserFactory;
+	private SAXParser objSAXParser;
+	
+	public ModelXMLFileParser(Path objInFilePath) {
+		this.bolCrop = false;
+		this.strCropName = "";
+		this.bolExperimentNames = false;
+		this.bolString = false;
+		this.setExperimentNames = new HashSet<String>();
+		this.objSAXParserFactory = SAXParserFactory.newInstance();
+		try {
+			this.objSAXParser = this.objSAXParserFactory.newSAXParser();
+			this.objSAXParser.parse(objInFilePath.toString(), 
+					                this);
+		}
+		catch (Exception e) {
+			objLogger.error("ModelXMLFileParser.ModelXMLFileParser", 
+                            e);
+		}
+	}
+	
+	@Override public void startElement(String url,
+			                           String localName,
+			                           String qName,
+			                           Attributes attributes) throws SAXException {
+		if (qName.equals("crop")) {
+			this.bolCrop = true;
+		}
+		else {
+			if (qName.equals("experimentNames")) {
+				this.bolExperimentNames = true;
+			}
+			else {
+				if ((this.bolExperimentNames == true) && 
+					(qName.equals("String"))) {
+					this.bolString = true;
+				}
+			}
+		}
+	}
+	
+	@Override public void characters(char ch[], 
+			                         int start, 
+			                         int length) throws SAXException {
+		if (this.bolCrop == true) {
+			this.strCropName = new String(ch, 
+					                      start, 
+					                      length);
+		}
+		else {
+			if ((this.bolExperimentNames == true) &&
+				(this.bolString == true)) {
+				this.setExperimentNames.add(new String(ch, 
+					                                   start, 
+					                                   length));
+				
+			}
+		}
+	}
+		
+	@Override public void endElement(String url,
+			                         String localName,
+			                         String qName) throws SAXException {
+		if (qName.equals("crop")) {
+			this.bolCrop = false;
+		}
+		else {
+			if (qName.equals("experimentNames")) {
+				this.bolExperimentNames = false;
+			}
+			else {
+				if ((this.bolExperimentNames == true) &&
+					(qName.equals("String"))) {
+					this.bolString = false;
+				}
+			}
+		}
+	}
+	
+	public String getCropName() {
+		return this.strCropName;
+	}
+	
+	public Set<String> getExperimentNames() {
+		return this.setExperimentNames;
+	}
+}

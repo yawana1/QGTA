@@ -1,0 +1,54 @@
+package data;
+
+import java.nio.file.Path;
+
+public class Trait {
+	
+	private String strName;
+	private Path objPath;
+	private boolean bolConverged;
+	private boolean bolBoundedVCs;
+
+	public Trait(String strInName,
+			     Path objInPath) {
+		this.strName = strInName;
+		this.objPath = objInPath;
+		this.bolConverged = false;
+		this.bolBoundedVCs = false;
+	}
+	
+	@Override
+	public boolean equals(Object objIn) {
+		if ((objIn != null) && 
+			(objIn instanceof Trait)) {
+			return this.strName.equals(((Trait)objIn).getName());
+		}
+		else {
+			return false;
+		}
+	}
+	
+	public String getName() {
+		return this.strName;
+	}
+	
+	public Path getPath() {
+		return this.objPath;
+	}
+	
+	public void setConverged(boolean bolInConverged) {
+		this.bolConverged = bolInConverged;
+	}
+	
+	public boolean getConverged() {
+		return this.bolConverged;
+	}
+
+	public void setBoundedVCs(boolean bolInBoundedVCs) {
+		this.bolBoundedVCs = bolInBoundedVCs;
+	}
+	
+	public boolean getBoundedVCs() {
+		return this.bolBoundedVCs;
+	}
+}

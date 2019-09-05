@@ -1,0 +1,17 @@
+package validation;
+
+import java.nio.file.Path;
+
+public class ValidationProcess {
+	private Validator objValidator;
+	
+	public ValidationProcess(String strInSeasonName,
+			                 Path objInPreviousReportsDirectoryPath) {
+		this.objValidator = new Validator(strInSeasonName,
+				                          objInPreviousReportsDirectoryPath);
+	}
+	
+	public void start() {
+		this.objValidator.run();
+	}
+}

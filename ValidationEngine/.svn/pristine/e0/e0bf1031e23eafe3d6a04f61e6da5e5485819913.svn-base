@@ -1,0 +1,82 @@
+package data;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+///////////////////////////////////////////////////////////////
+// The name identifier of the report object is the trial name  
+///////////////////////////////////////////////////////////////
+public class Report {
+
+	private String strName;
+	private Map<String, Integer> mapLocationsNumbers;
+	private Map<String, Integer> mapRecordsNumbers;
+	private Map<String, List<Double>> mapEntryEstimates;
+	private Map<String, List<Double>> mapExlRawMeans;
+	private Map<String, List<Double>> mapLocationEstimates;
+
+	public Report(String strInName) {
+		this.strName = strInName;
+		this.mapLocationsNumbers = new HashMap<String, Integer>();
+		this.mapRecordsNumbers = new HashMap<String, Integer>();	
+		this.mapEntryEstimates = new HashMap<String, List<Double>>();
+		this.mapExlRawMeans = new HashMap<String, List<Double>>();
+		this.mapLocationEstimates = new HashMap<String, List<Double>>();
+	}
+	
+	@Override
+	public boolean equals(Object objIn) {
+		if ((objIn != null) && 
+			(objIn instanceof Report)) {
+			return this.strName.equals(((Report)objIn).getName());
+		}
+		else {
+			return false;
+		}
+	}
+	
+	public String getName() {
+		return this.strName;
+	}
+	
+	public void setLocationsNumbers(Map<String, Integer> mapInLocationsNumbers) {
+		this.mapLocationsNumbers = mapInLocationsNumbers;
+	}
+	
+	public void setRecordsNumbers(Map<String, Integer> mapInRecordsNumbers) {
+		this.mapRecordsNumbers = mapInRecordsNumbers;
+	}
+	
+	public void setEntryEstimates(Map<String, List<Double>> mapInEntryEstimates) {
+		this.mapEntryEstimates = mapInEntryEstimates;
+	}
+	
+	public void setExlRawMeans(Map<String, List<Double>> mapInExlRawMeans) {
+		this.mapExlRawMeans = mapInExlRawMeans;
+	}
+
+	public void setLocationEstimates(Map<String, List<Double>> mapInLocationEstimates) {
+		this.mapLocationEstimates = mapInLocationEstimates;
+	}
+	
+	public Map<String, Integer> getLocationsNumbers() {
+		return this.mapLocationsNumbers;	
+	}
+	
+	public Map<String, Integer> getRecordsNumbers() {
+		return this.mapRecordsNumbers;
+	}
+
+	public Map<String, List<Double>> getEntryEstimates() {
+		return this.mapEntryEstimates;
+	}
+	
+	public Map<String, List<Double>> getExlRawMeans() {
+		return this.mapExlRawMeans;
+	}
+	
+	public Map<String, List<Double>> getLocationEstimates() {
+		return this.mapLocationEstimates;
+	}
+}

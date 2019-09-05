@@ -1,0 +1,169 @@
+package io;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.NoSuchFieldException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+public class ExlSummaryReader {
+
+	static Logger objLogger = Logger.getLogger(ExlSummaryReader.class.getName());
+	public static final String TAB = "\t";
+	private Map<String, List<Double>> mapRawMeans;
+	private List<Map<String, String>> lstMapExlSummaryData;
+
+	public ExlSummaryReader(Path objInExlSummaryFilePath) throws NoSuchFieldException {
+		BufferedReader objBufferedReader;
+		int intLineNumber;
+		String strLine;
+		String[] strArrayHeaders;
+		ArrayList<String> lstHeaders;
+		int intTraitNameColumnIndex;
+		int intRawMeanColumnIndex;
+		String[] strArrayLineParts;
+		String strTraitName;
+		double douRawMean;
+		List<Double> lstRawMeans;
+		Map<String, String> mapDataLine;
+		int intArrayIndex;
+		
+		this.mapRawMeans = new HashMap<String, List<Double>>();
+		this.lstMapExlSummaryData = new ArrayList<Map<String, String>>();
+		objBufferedReader = null;
+		intLineNumber = 0;
+		strArrayHeaders = null;
+		intTraitNameColumnIndex = 0;		
+		intRawMeanColumnIndex = 0;
+		try {
+			objBufferedReader = new BufferedReader(new FileReader(objInExlSummaryFilePath.toFile()));
+			while ((strLine = objBufferedReader.readLine()) != null) {
+				intLineNumber++;
+				////////////////
+				// The headers  
+				////////////////
+				if (intLineNumber == 1) {
+					strArrayHeaders = strLine.trim().split(TAB);
+					lstHeaders = new ArrayList<String>(Arrays.asList(strArrayHeaders));
+					//System.out.println("Headers: " + lstHeaders.toString());
+					try {
+						if (!(lstHeaders.contains("traitVatString"))) {
+							throw new NoSuchFieldException("No traitVatString column in " + 
+	                                                       objInExlSummaryFilePath.toString());
+						}
+						else {
+							intTraitNameColumnIndex = lstHeaders.indexOf("traitVatString");
+						}
+						
+						///////////////////
+						// Raw Means List  
+						///////////////////
+						if (!(lstHeaders.contains("rawMean"))) {
+							throw new NoSuchFieldException("No rawMean column in " + 
+                                                           objInExlSummaryFilePath.toString());
+						}
+						else {
+							intRawMeanColumnIndex = lstHeaders.indexOf("rawMean");
+						}
+					}
+					catch (NoSuchFieldException e) {
+						e.printStackTrace();
+						objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+						                e);
+						throw new RuntimeException();
+					}
+				}
+				///////////////////
+				// The data lines  
+				///////////////////
+				else {
+					strArrayLineParts = strLine.split(TAB,
+	                                                  strArrayHeaders.length);
+					try {
+						if (strArrayHeaders.length == strArrayLineParts.length) {
+							strTraitName = strArrayLineParts[intTraitNameColumnIndex];
+							
+							///////////////////
+							// Raw Means List  
+							///////////////////
+							try {
+								douRawMean = Double.parseDouble(strArrayLineParts[intRawMeanColumnIndex]);
+								if (this.mapRawMeans.containsKey(strTraitName)) {
+									lstRawMeans = this.mapRawMeans.get(strTraitName);
+								}
+								else {
+									lstRawMeans = new ArrayList<Double>();
+								}
+								lstRawMeans.add(douRawMean);
+								this.mapRawMeans.put(strTraitName, 
+											         lstRawMeans);
+							}
+							catch (NumberFormatException e) {
+								e.printStackTrace();
+								objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+				                                e);
+								throw new RuntimeException();
+							}
+							
+							//////////////
+							// Data Line 
+							//////////////
+							mapDataLine = new HashMap<String, String>();
+							for (intArrayIndex = 0;
+								 intArrayIndex < strArrayLineParts.length;	
+								 intArrayIndex++) {
+								mapDataLine.put(strArrayHeaders[intArrayIndex], 
+										        strArrayLineParts[intArrayIndex]);
+							}
+							this.lstMapExlSummaryData.add(mapDataLine);
+						}
+						else {
+							throw new NoSuchFieldException("Inconsistency in the headers and fields numbers in " + 
+                                                           objInExlSummaryFilePath.toString());
+						}
+					}
+					catch (NoSuchFieldException e) {
+						e.printStackTrace();
+						objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+				                        e);
+						throw new RuntimeException();
+					}
+				}
+			}
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+			objLogger.error("ExlSummaryReader.EntrySummaryReader", 
+			                e);
+			throw new RuntimeException();
+		}
+		finally {
+			try {
+				if (objBufferedReader != null) {
+					objBufferedReader.close();
+				}
+			} 
+			catch (IOException e) {
+				e.printStackTrace();
+				objLogger.error("ExlSummaryReader.EntrySummaryReader", 
+		                        e);	
+				throw new RuntimeException();
+			}
+		}
+	}	
+	
+	public Map<String, List<Double>> getRawMeans() {
+		return this.mapRawMeans;
+	}
+	
+	public List<Map<String, String>> getData() {
+		return this.lstMapExlSummaryData;
+	}		
+}

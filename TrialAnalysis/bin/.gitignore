@@ -1,0 +1,13 @@
+/asreml/
+/data/
+/db/
+/App.xml
+/error.properties
+/hibernate.cfg.xml
+/log4j.properties
+/main/
+/report/
+/stats/
+/transformation/
+/validate/
+/vat/

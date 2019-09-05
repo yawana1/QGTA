@@ -1,0 +1,120 @@
+package io;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.NoSuchFieldException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+
+public class ExlSummaryReader {
+
+	static Logger objLogger = Logger.getLogger(ExlSummaryReader.class.getName());
+	public static final String TAB = "\t";
+	private List<Double> lstRawMean;
+	private List<Map<String, String>> lstMapExlSummaryData;
+
+	public ExlSummaryReader(Path objInExlSummaryFilePath) throws NoSuchFieldException {
+		BufferedReader objBufferedReader;
+		int intLineNumber;
+		String strLine;
+		String[] strArrayHeaders;
+		ArrayList<String> lstHeaders;
+		int intRawMeanColumnIndex;
+		String[] strArrayLineParts;
+		double douRawMean;
+		Map<String, String> mapDataLine;
+		int intArrayIndex;
+		
+		this.lstRawMean = new ArrayList<Double>();
+		this.lstMapExlSummaryData = new ArrayList<Map<String, String>>();
+		objBufferedReader = null;
+		intLineNumber = 0;
+		strArrayHeaders = null;
+		intRawMeanColumnIndex = 0;
+		try {
+			objBufferedReader = new BufferedReader(new FileReader(objInExlSummaryFilePath.toFile()));
+			while ((strLine = objBufferedReader.readLine()) != null) {
+				intLineNumber++;
+				if (intLineNumber == 1) {
+					strArrayHeaders = strLine.trim().split(TAB);
+					lstHeaders = new ArrayList<String>(Arrays.asList(strArrayHeaders));
+					System.out.println("Headers: " + lstHeaders.toString());
+					try {
+						if (!(lstHeaders.contains("rawMean"))) {
+							throw new NoSuchFieldException();
+						}
+						else {
+							intRawMeanColumnIndex = lstHeaders.indexOf("rawMean");
+						}
+					}
+					catch (NoSuchFieldException e) {
+						objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+						                e);
+					}
+				}
+				else {
+					strArrayLineParts = strLine.split(TAB,
+	                                                  strArrayHeaders.length);
+					try {
+						if (strArrayHeaders.length == strArrayLineParts.length) {
+							try {
+								douRawMean = Double.parseDouble(strArrayLineParts[intRawMeanColumnIndex]);
+								this.lstRawMean.add(douRawMean);
+							}
+							catch (NumberFormatException e) {
+								objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+				                                e);
+							}
+							mapDataLine = new HashMap<String, String>();
+							for (intArrayIndex = 0;
+								 intArrayIndex < strArrayLineParts.length;	
+								 intArrayIndex++) {
+								mapDataLine.put(strArrayHeaders[intArrayIndex], 
+										        strArrayLineParts[intArrayIndex]);
+							}
+							this.lstMapExlSummaryData.add(mapDataLine);
+						}
+						else {
+							throw new NoSuchFieldException();
+						}
+					}
+					catch (NoSuchFieldException e) {
+						objLogger.error("ExlSummaryReader.ExlSummaryReader", 
+				                        e);
+					}
+				}
+			}
+		}
+		catch (IOException e) {
+			objLogger.error("ExlSummaryReader.EntrySummaryReader", 
+			                e);			
+		}
+		finally {
+			try {
+				if (objBufferedReader != null) {
+					objBufferedReader.close();
+				}
+			} 
+			catch (IOException e) {
+				objLogger.error("ExlSummaryReader.EntrySummaryReader", 
+		                        e);			
+			}
+		}
+		
+	}	
+	
+	public List<Double> getRawMean() {
+		return this.lstRawMean;
+	}
+	
+	public List<Map<String, String>> getData() {
+		return this.lstMapExlSummaryData;
+	}		
+}

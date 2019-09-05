@@ -1,0 +1,66 @@
+package main;
+
+import java.net.URL;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+
+import data.XML;
+import data.xml.objects.App;
+
+import validation.ValidationProcess;
+
+public class Main {
+
+	private static Logger objLogger;
+	private final static String APPLICATION_CONFIGURATION = "App.xml";
+	private final static long START_TIME = System.currentTimeMillis();
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		URL objURLApplicationConfigurationFile;
+		String strApplicationConfigurationFile;
+		URL objURLLogFile;
+		ValidationProcess objValidationProcess; 
+		
+		try {
+			// Getting the application configuration from App.xml
+			// Not processing any argument from the command line at the moment
+		
+			objURLApplicationConfigurationFile = Thread.currentThread().getContextClassLoader().getResource(APPLICATION_CONFIGURATION);
+			strApplicationConfigurationFile = null;
+			if (objURLApplicationConfigurationFile == null) {
+				System.err.println("App.xml not on the classpath");
+			}
+			else {
+				strApplicationConfigurationFile = objURLApplicationConfigurationFile.getFile();
+			}
+	
+			if (strApplicationConfigurationFile == null) {
+				System.err.println("The application configuration file not found!");
+			}
+			else {
+				XML.INSTANCE.deserialize(strApplicationConfigurationFile, 
+										 App.INSTANCE);
+				objURLLogFile = Thread.currentThread().getContextClassLoader().getResource("log4j.properties");
+				System.setProperty("log.file",
+								   "main");
+				System.setProperty("log.dir",
+					           	   App.INSTANCE.getLogDir());
+				PropertyConfigurator.configure(objURLLogFile);
+				objLogger = Logger.getLogger(Main.class.getName());
+		
+				System.out.println("Generating a ValidationProcess object...");	
+				objValidationProcess = new ValidationProcess();
+				objValidationProcess.start();
+			}
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			objLogger.fatal("", 
+					        e);
+		}		
+	}
+}

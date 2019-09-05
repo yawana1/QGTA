@@ -1,0 +1,327 @@
+package validation;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math.stat.descriptive.SynchronizedDescriptiveStatistics;
+import org.apache.log4j.Logger;
+
+import asreml.output.AsrVariance;
+import data.xml.objects.App;
+
+import data.Model;
+import data.Trial;
+import data.Trait;
+import io.EntrySummaryReader;
+import io.ExlSummaryReader;
+import io.ExperimentSummaryReader;
+import io.LocSummaryReader;
+import io.ReportDirectorySimpleFileVisitor;
+import io.WorkDirectorySimpleFileVisitor;
+
+public class Validator {
+	
+	static Logger objLogger = Logger.getLogger(Validator.class.getName());
+	private WorkDirectorySimpleFileVisitor objWorkDirectorySimpleFileVisitor;
+	private List<Trial> lstTrialWorks;
+	private TreeMap<String, List<Trial>> treMapTrialWorksByTrait;
+	private ReportDirectorySimpleFileVisitor objReportDirectorySimpleFileVisitor;
+	private LocSummaryReader objLocSummaryReader;
+	private EntrySummaryReader objEntrySummaryReader;
+	private ExlSummaryReader objExlSummaryReader;
+	private ExperimentSummaryReader objExperimentSummaryReader;
+	private double[] douArrayLocationsDeviations;
+	private double[] douArrayRecordsDeviations;	
+	
+	public Validator() {}
+	
+	public void run() {
+		try {
+			this.coverReportDirectory();
+			//this.coverWorkDirectory();
+			//this.getAsrData();
+			//this.getTrialsByTrait();
+			
+			//this.processTraits();
+			
+			//this.douArrayLocationsDeviations = this.calculateDeviations(this.objExperimentSummaryReader.getNumberLocations());
+		}
+		catch (IOException e) {
+			objLogger.error("Validator.run", 
+                            e);
+		}
+	}
+
+	private void coverReportDirectory() throws IOException,
+    										   FileNotFoundException {
+		try {
+			this.objReportDirectorySimpleFileVisitor = new ReportDirectorySimpleFileVisitor();
+		}
+		catch (Exception e) {
+			objLogger.error("Validator.coverReportDirectory", 
+							e);
+		}
+		Files.walkFileTree(Paths.get(App.INSTANCE.getReportDirectory()), 
+						   this.objReportDirectorySimpleFileVisitor);
+		System.out.println();
+
+		// The file: locSummary.txt
+		try {
+			if (!(this.objReportDirectorySimpleFileVisitor.checkLocSummaryFile())) {
+				throw new FileNotFoundException();
+			}
+			else {
+				System.out.println("Processing locSummary.txt...");
+				try {
+					this.objLocSummaryReader = new LocSummaryReader(this.objReportDirectorySimpleFileVisitor.getLocSummaryFilePath());
+				}
+				catch (Exception e)	{
+					objLogger.error("Validator.coverReportDirectory", 
+									e);
+				}
+				System.out.println("Data in the estimate column: " + this.objLocSummaryReader.getEstimate().toString());
+			}
+		}
+		catch (FileNotFoundException e) {
+			objLogger.error("Validator.coverReportDirectory", 
+							e);
+		}
+
+		// The file: entrySummary.txt
+		try {
+			if (!(this.objReportDirectorySimpleFileVisitor.checkEntrySummaryFile())) {
+				throw new FileNotFoundException();			
+			}
+			else {
+				System.out.println("Processing entrySummary.txt...");
+				try {
+					this.objEntrySummaryReader = new EntrySummaryReader(this.objReportDirectorySimpleFileVisitor.getEntrySummaryFilePath());
+				}
+				catch (Exception e) {
+					objLogger.error("Validator.coverReportDirectory", 
+									e);
+				}
+				System.out.println("Records Number: " + this.objEntrySummaryReader.getRecordsNumber());
+				System.out.println("Data in the estimate column: " + this.objEntrySummaryReader.getEstimate().toString());
+			}
+		}
+		catch (FileNotFoundException e) {
+			objLogger.error("Validator.coverReportDirectory", 
+							e);
+		}
+
+		// The file: exlSummary.txt
+		try {
+			if (!(this.objReportDirectorySimpleFileVisitor.checkExlSummaryFile())) {
+				throw new FileNotFoundException();
+			}
+			else {
+				System.out.println("Processing exlSummary.txt...");
+				try {
+					this.objExlSummaryReader = new ExlSummaryReader(this.objReportDirectorySimpleFileVisitor.getExlSummaryFilePath());
+				}
+				catch (Exception e)	{
+					objLogger.error("Validator.coverReportDirectory", 
+									e);
+				}
+				System.out.println("Data in the rawMean column: " + this.objExlSummaryReader.getRawMean().toString());
+			}
+		}
+		catch (FileNotFoundException e) {
+			objLogger.error("Validator.coverReportDirectory", 
+							e);
+		}
+
+		// The file: experimentSummary.txt
+		try {
+			if (!(this.objReportDirectorySimpleFileVisitor.checkExperimentSummaryFile())) {
+				throw new FileNotFoundException();
+			}
+			else {
+				System.out.println("Processing experimentSummary.txt...");
+				try {
+					this.objExperimentSummaryReader = new ExperimentSummaryReader(this.objReportDirectorySimpleFileVisitor.getExperimentSummaryFilePath());
+				}
+				catch (Exception e)	{
+					objLogger.error("Validator.coverReportDirectory", 
+									e);
+				}
+				System.out.println("numberLocations: " + this.objExperimentSummaryReader.getNumberLocations().toString());
+			}
+		}
+		catch (FileNotFoundException e) {
+			objLogger.error("Validator.coverReportDirectory", 
+							e);
+		}
+	}
+	
+	
+	private void coverWorkDirectory() throws IOException {
+		try {
+			this.objWorkDirectorySimpleFileVisitor = new WorkDirectorySimpleFileVisitor();
+		}
+		catch (Exception e) {
+			objLogger.error("Validator.coverWorkDirectory", 
+                            e);
+		}
+		Files.walkFileTree(Paths.get(App.INSTANCE.getWorkDirectory()), 
+				                     this.objWorkDirectorySimpleFileVisitor);
+		this.lstTrials = this.objWorkDirectorySimpleFileVisitor.getTrials();
+	}
+	
+	private void getTrialsByTrait() {
+		List<Trial> lstTrials;
+		
+		this.treMapTrialsByTrait = new TreeMap<String, List<Trial>>();
+		for (Trial objTrial : this.lstTrials) {
+			for (Model objModel : objTrial.getModels()) {
+				for (Trait objTrait : objModel.getTraits()) { 
+					if (!(this.treMapTrialsByTrait.containsKey(objTrait.getName()))) {
+						lstTrials = new ArrayList<Trial>();
+						lstTrials.add(objTrial);
+						this.treMapTrialsByTrait.put(objTrait.getName(), 
+								                     lstTrials);
+					}
+					else {
+						if (!(this.treMapTrialsByTrait.get(objTrait.getName()).contains(objTrial))) {
+							this.treMapTrialsByTrait.get(objTrait.getName()).add(objTrial);
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	private void getAsrData() {
+		int intTrialIndex;
+		int intModelIndex;
+		int intTraitIndex;
+		Path objAsrFilePath;
+		asreml.Trait objAsremlTrait;
+		List<asreml.Trait> lstArsemlTraits;
+		asreml.output.AsrData objAsrData;
+		Map<String,AsrVariance> objAsrVariancesMap;
+		boolean bolBoundedVCs;
+		
+		for (Trial objTrial : this.lstTrials) {
+			intTrialIndex = this.lstTrials.indexOf(objTrial);
+			for (Model objModel : objTrial.getModels()) {
+				intModelIndex = this.lstTrials.get(intTrialIndex).getModels().indexOf(objModel);
+				for (Trait objTrait : objModel.getTraits()) {
+					intTraitIndex = this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits().indexOf(objTrait);
+					///////////////////////////////////////////////////////////////////////////////////////////////
+					// The AsrData class in the Trial Analysis project adds the extension ".asr" to any filename,   
+					// even having the same extension!
+					///////////////////////////////////////////////////////////////////////////////////////////////					
+					objAsrFilePath = FileSystems.getDefault().getPath(objTrait.getPath().toString(), "asreml");
+					objAsremlTrait = new asreml.Trait(objTrait.getName(), 
+							                          0);
+					lstArsemlTraits = new ArrayList<asreml.Trait>();
+                    lstArsemlTraits.add(objAsremlTrait);
+					objAsrData = new asreml.output.AsrData(objAsrFilePath,
+					                                       0,
+					                                       0,
+					                                       0,
+					                                       lstArsemlTraits,
+											               0.0);
+					System.out.println(objAsrFilePath.toString() + ".asr");
+					this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits().get(intTraitIndex).setConverged(objAsrData.isConverged());
+					if (objAsrData.isConverged()) {
+						System.out.println("Converged...");
+					}
+					else {
+						System.out.println("NOT converged...");
+					}
+					objAsrVariancesMap = objAsrData.getVariance(objAsremlTrait);
+					if (objAsrVariancesMap.get("Variance") != null) {
+						bolBoundedVCs = this.getBoundedC(objAsrVariancesMap.get("Variance").getC());
+					}
+					else {
+						bolBoundedVCs = false;
+					}
+					this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).getTraits().get(intTraitIndex).setBoundedVCs(bolBoundedVCs);
+					if (bolBoundedVCs) {
+						System.out.println("Bounded VCs...");
+					}
+					else {
+						System.out.println("NOT bounded VCs...");
+					}
+				}
+			}
+		}
+	}
+	
+	private void processTraits() {
+		Iterator<Map.Entry<String, List<Trial>>> iteTrialsByTrait;
+		Map.Entry<String, List<Trial>> objMapEntry;
+		int intTrialIndex;
+		int intModelIndex;
+		int intTraitIndex;
+		
+		iteTrialsByTrait = this.treMapTrialsByTrait.entrySet().iterator();
+		while (iteTrialsByTrait.hasNext())
+		{
+			objMapEntry = (Map.Entry<String, List<Trial>>)iteTrialsByTrait.next();
+			System.out.print("Trait name: " + objMapEntry.getKey() + ", trial names: ");
+			for (Trial objTrial : objMapEntry.getValue()) {
+				intTrialIndex = this.lstTrials.indexOf(objTrial);
+				for (Model objModel: this.lstTrials.get(intTrialIndex).getModels()) {
+					if (objModel.getName().equals("anova")) {
+						// and so on...
+					}
+				}
+				
+				
+				System.out.print(objTrial.getName() + ", ");
+			}
+			System.out.println();
+		}
+	}
+	
+	
+	private double[] calculateDeviations(int[] intInArrayNumbers) {
+		DescriptiveStatistics objDescriptiveStatistics;
+		int intArrayIndex;
+		double[] douArrayDeviations;
+		
+		objDescriptiveStatistics = new SynchronizedDescriptiveStatistics(); 
+		for (intArrayIndex = 0;
+			 intArrayIndex < intInArrayNumbers.length; 	
+			 intArrayIndex++) {
+			objDescriptiveStatistics.addValue(intInArrayNumbers[intArrayIndex]); 
+		}
+		douArrayDeviations = new double[intInArrayNumbers.length];
+		for (intArrayIndex = 0;
+			 intArrayIndex < douArrayDeviations.length; 	
+			 intArrayIndex++) {
+			douArrayDeviations[intArrayIndex] = intInArrayNumbers[intArrayIndex] - objDescriptiveStatistics.getStandardDeviation();
+		}
+		
+		return douArrayDeviations;
+	}
+	
+	public double[] getLocationsDeviation() {
+		return this.douArrayLocationsDeviations;
+	}
+
+	public double[] getRecordsDeviation() {
+		return this.douArrayRecordsDeviations;
+	}
+	
+	private boolean getBoundedC(String strInC) {
+		if (strInC == null) { 
+			return false; }
+		
+		return (!(strInC.equals("P")));
+	}
+}

@@ -1,0 +1,110 @@
+package highLevelSummary;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFCellStyle;
+import org.apache.poi.hssf.usermodel.HSSFFont;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+
+public class ReportWriter {
+	
+	public ReportWriter(String strInFileName,
+			            TreeMap<String, List<HSSFRow>> mapInData) {
+		HSSFWorkbook objHSSFWorkbook;
+		HSSFCellStyle objHeaderHSSFCellStyle;
+		HSSFFont objHeaderHSSFFont;
+		HSSFCellStyle objLiteralHSSFCellStyle;
+		HSSFCellStyle objNumericHSSFCellStyle;
+		Iterator<Map.Entry<String, List<HSSFRow>>> objIterator;
+		boolean bolHeaders;
+		Map.Entry<String, List<HSSFRow>> objMapEntry;
+		HSSFSheet objHSSFSheet;
+		List<HSSFRow> lstHSSFRows;
+		int intArrayListIndex;
+		HSSFRow objOutputHSSFRow;
+		int intCellsNumber;
+		HSSFCell objHSSFCell;
+		int intColumnsNumber;
+		int intColumnIndex;
+		FileOutputStream objFileOutputStream;
+		
+		objHSSFWorkbook = new HSSFWorkbook();
+		objHeaderHSSFCellStyle = objHSSFWorkbook.createCellStyle(); 
+		objHeaderHSSFCellStyle.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+		objHeaderHSSFFont = objHSSFWorkbook.createFont();
+		objHeaderHSSFFont.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+		objHeaderHSSFCellStyle.setFont(objHeaderHSSFFont);
+		objLiteralHSSFCellStyle = objHSSFWorkbook.createCellStyle();
+		objLiteralHSSFCellStyle.setAlignment(HSSFCellStyle.ALIGN_CENTER);
+		objNumericHSSFCellStyle = objHSSFWorkbook.createCellStyle();
+		objNumericHSSFCellStyle.setAlignment(HSSFCellStyle.ALIGN_RIGHT);
+		objIterator = mapInData.entrySet().iterator();
+		bolHeaders = true;
+		intColumnsNumber = 0;
+		while (objIterator.hasNext()) {
+			objMapEntry = objIterator.next();
+			System.out.println("Building a new sheet: " + objMapEntry.getKey());
+			objHSSFSheet = objHSSFWorkbook.createSheet(objMapEntry.getKey());
+			lstHSSFRows = objMapEntry.getValue();
+			for (intArrayListIndex = 0;
+				 intArrayListIndex < lstHSSFRows.size(); 
+				 intArrayListIndex++) {
+				objOutputHSSFRow = objHSSFSheet.createRow(intArrayListIndex);
+				if (bolHeaders == true) {
+					for (intCellsNumber = 0;
+						 intCellsNumber < lstHSSFRows.get(intArrayListIndex).getPhysicalNumberOfCells(); 
+						 intCellsNumber++) {
+						objHSSFCell = objOutputHSSFRow.createCell(intCellsNumber); 
+						objHSSFCell.setCellValue((String)"   " + lstHSSFRows.get(intArrayListIndex).getCell(intCellsNumber).getStringCellValue() + "   ");
+						objHSSFCell.setCellStyle(objHeaderHSSFCellStyle);
+					}
+					intColumnsNumber = lstHSSFRows.get(intArrayListIndex).getPhysicalNumberOfCells();
+					bolHeaders = false;
+				}
+				else {
+					for (intCellsNumber = 0;
+						 intCellsNumber < lstHSSFRows.get(intArrayListIndex).getPhysicalNumberOfCells(); 
+						 intCellsNumber++) {
+						objHSSFCell = objOutputHSSFRow.createCell(intCellsNumber);
+						if (lstHSSFRows.get(intArrayListIndex).getCell(intCellsNumber).getCellType() == HSSFCell.CELL_TYPE_NUMERIC) {
+							objHSSFCell.setCellValue(lstHSSFRows.get(intArrayListIndex).getCell(intCellsNumber).getNumericCellValue());
+							objHSSFCell.setCellStyle(objNumericHSSFCellStyle);
+						}
+						else {
+							if (lstHSSFRows.get(intArrayListIndex).getCell(intCellsNumber).getCellType() == HSSFCell.CELL_TYPE_STRING) {
+								objHSSFCell.setCellValue(lstHSSFRows.get(intArrayListIndex).getCell(intCellsNumber).getStringCellValue());
+								objHSSFCell.setCellStyle(objLiteralHSSFCellStyle);
+							}
+						}
+					}
+				}		
+			}
+			for (intColumnIndex = 0;
+				 intColumnIndex	< intColumnsNumber;
+				 intColumnIndex++) {
+				objHSSFSheet.autoSizeColumn(intColumnIndex);
+			}
+		}
+		try {
+			objFileOutputStream = new FileOutputStream(new File(strInFileName));
+			objHSSFWorkbook.write(objFileOutputStream);
+			objFileOutputStream.close();
+		} 
+		catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		catch (IOException e) {			
+			e.printStackTrace();
+		}
+	}
+}

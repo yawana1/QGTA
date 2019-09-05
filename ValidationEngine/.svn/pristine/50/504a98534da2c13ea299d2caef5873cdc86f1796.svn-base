@@ -1,0 +1,17 @@
+no_covariance_script = Missing gblup_script_file variable from Constants file
+no_geno_txt = Missing geno_txt variable from Constants file
+no_hybrid_map = Missing hybrid_map variable from Constants file
+file_load = Error loading file 
+not_writable_file = File not writable
+not_found_file = File not found or not readable 
+not_set_sql_template = Sql Template not set in the Trial xml file 
+inbred_traits = Error setting inbred traits for sql
+null_value = is not set
+init_error = Error initializing
+class_load = Error loading class 
+empty =  is empty
+cannot_connection = Cannot connect to 
+sql_insert = Error inserting data 
+sql_select_no_data = No rows returned 
+has_nulls = has null values
+

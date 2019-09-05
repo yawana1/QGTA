@@ -1,0 +1,253 @@
+package db.modules;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.apache.log4j.Logger;
+
+import au.com.bytecode.opencsv.CSVReader;
+import data.collection.TrialData;
+import data.xml.objects.Constants;
+import data.xml.objects.DBType;
+import data.xml.objects.SqlColumn;
+import data.xml.objects.Trait;
+import data.xml.objects.Trial;
+import db.Session;
+import db.Sessions;
+import error.ErrorMessage;
+import utils.Funcs;
+
+/**
+ * Generate sql to pull data for a GBLUP analysis
+ * 
+ * @author Scott Smith
+ *
+ */
+public class InbredEval implements RetrieveData {
+
+	static Logger log = Logger.getLogger(InbredEval.class.getName());
+	
+	protected String sqlFileName;
+	protected String sqlFullPath;
+	protected List<SqlColumn> colList = new ArrayList<SqlColumn>();
+	protected List<Trait> traitList = new ArrayList<Trait>();
+	protected InbredEvalParams inbredEvalParams;
+
+	public Map<String, String> getParams() {
+		return inbredEvalParams.getParamsAsMap();
+	}
+
+	public void setParams(Map<String, String> params) {
+		this.inbredEvalParams.setParams(params);
+	}
+
+	public InbredEval() {
+	}
+
+	public TrialData execute(Trial trial){
+
+		List<Map<String,Object>> data = new ArrayList<>();
+		Map<String, String> types = new HashMap<>();
+
+		try{
+			String sql = generateSql(trial);
+			//if the sql has more than just the select in it, execute it and populate the list
+			if(sql !=null ){
+				//set parameters
+				Map<String, Object> parameters = inbredEvalParams.getSqlParams();
+				
+				StringBuffer buffer = new StringBuffer();
+				Object temp = null;
+				if((temp = parameters.get("males")) != null){
+					for(String id : temp.toString().split(",")){
+						if(!id.isEmpty()){
+							buffer.append(String.format(" INSERT INTO #MALES VALUES(%s) ", id));
+						}
+					}
+				}
+				if((temp = parameters.get("females")) != null){
+					for(String id : temp.toString().split(",")){
+						if(!id.isEmpty()){
+							buffer.append(String.format(" INSERT INTO #FEMALES VALUES(%s) ", id));
+						}
+					}
+				}
+				
+				parameters.put("lines", buffer.toString());
+				
+				buffer = new StringBuffer();
+				if((temp = parameters.get("project_names")) != null){
+					for(String id : temp.toString().split("\\|")){
+						buffer.append(String.format(" ''%s'', ", id).trim());
+					}
+					sql = sql.replace(":project_names", "'"+buffer.subSequence(0, buffer.length()-1)+"'");
+					//sql = sql.replace(":project_names", "'"+buffer.subSequence(0, buffer.length()-1)+"'");
+					//parameters.put("project_names", buffer.subSequence(0, buffer.length()-1));
+				}
+				else{
+					parameters.put("project_names", buffer.toString());
+				}
+
+				//set SC specific sets
+				if(false){
+					setSCSetup(parameters);
+				}
+				
+				printQuery(Paths.get(trial.getTrialWorkDirectory(), "inbred.sql"), sql, parameters);
+				
+				Session session = Sessions.INSTANCE.get(trial.getCrop(), DBType.VARIETY_REP);
+				session.queryWithTypes(sql, parameters, data, types);
+			}
+			else{
+				log.error("Sql variable" + ErrorMessage.INSTANCE.getMessage("null_value"));
+			}
+		}catch(Exception e){
+			log.error("", e);
+		}
+			
+		
+		return new TrialData(data, types);
+	}
+
+	/**
+	 * Write out sql to a file.
+	 * @param path - File destination
+	 * @param sql - 
+	 * @param parameters 
+	 */
+	private void printQuery(Path path, String sql, Map<String, Object> parameters){
+		for(Entry<String, Object> param : parameters.entrySet()){
+			sql = sql.replace(":"+param.getKey(), "'"+param.getValue()+"'");
+		}
+		
+		try {
+			Files.write(Funcs.createWithPermissions(path,false), sql.getBytes());
+		} catch (IOException e) {
+			log.warn(e);
+		}
+	}
+	
+	private String generateSql(Trial trial){
+		String sql = null;
+		String fileName = null;
+		try{
+			if(trial != null && trial.getSqlTemplateFile() != null){
+				fileName = trial.getSqlTemplateFile();
+			}
+			else{
+				log.error("not_set_sql_template");
+				throw new Exception();
+			}
+			
+			sql = Funcs.fileToString(fileName);
+			
+			if(sql.contains("[traits]")){
+				List<Trait> traits = trial.getTraits();
+				if(!traits.isEmpty()){
+					sql = sql.replace("[traits]", SQLBuilder.traitsToSql(traits));
+				}
+				else{
+					log.error("File - " + trial.getTrialName() + " missing traits ");
+				}
+				
+				String traitsFilter = " AND (";
+				boolean flagOr = true;
+				for(Trait trait : trial.getTraits()){
+					if(flagOr){
+						flagOr = false; 	
+					}
+					else{
+						traitsFilter += " OR ";	
+					}
+					traitsFilter += trait.getVarName() + " IS NOT NULL ";
+				}
+				traitsFilter += " ) ";
+				sql = sql.replace("[traitsFilter]", traitsFilter);
+			}
+			else{
+				try{
+					String traits = "";
+					String traitsGroup = "";
+					String traitsNoCase = "";
+					
+					for(Trait trait : trial.getTraits()){
+						traits += " ,"+(!trait.getVarName().startsWith("case") ? trait.getVarName() : trait.getVarName() + " as " + trait.getName());
+						//remove AS name from variables with a case statement in the app.properties to use in GROUP BY clause
+						traitsGroup += " ,"+(!trait.getVarName().startsWith("case") ? trait.getVarName() : trait.getVarName());
+						traitsNoCase += " ,"+(!trait.getVarName().startsWith("case") ? trait.getVarName() : trait.getName()) + " AS " + trait.getName();
+					}
+					traits = traits.replace("fb.", "fbk."); //for case statements
+					traitsGroup = traitsGroup.replace("fb.", "fbk."); //for case statements
+					traitsNoCase = traitsNoCase.replace("fb.", "fbk."); //for case statements
+					traitsNoCase = traitsNoCase.replace("fbk.c_test_wt", " CASE WHEN se.season_name < ''12E'' THEN NULL ELSE fbk.c_test_wt END ");
+					sql = sql.replace("{traits}", traits);
+					sql = sql.replace("{traitsGroup}", traitsGroup);
+					sql = sql.replace("{traitsNoCase}", traitsNoCase);
+				}
+				catch (Exception e) {
+					log.error(ErrorMessage.INSTANCE.getMessage("inbred_traits"), e);
+				}
+			}
+		}
+		catch(Exception e){
+			log.error("", e);
+		}
+		return sql;
+	}
+
+	@Override
+	public TrialData execute() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	private void setSCSetup(Map<String, Object> parameters){
+		//get heterotic groups out of file
+		Collection<Long> heteroticGroup = new ArrayList<>();
+		CSVReader csvReader = null; 
+		try{
+			Object file = Constants.INSTANCE.getConstant("heterotic_groups_sc");
+			if(file == null){
+				log.error("Missing Constant heterotic_groups_sc");
+			}
+			else{
+				csvReader = new CSVReader(new FileReader(file.toString()),',', '\"', 1);
+				String[] row;
+				int group = parameters.get("doc_name_female") == null ? 1 : 2;
+				while((row = csvReader.readNext()) != null){
+					if(group == Integer.parseInt(row[1])){
+						heteroticGroup.add(Long.parseLong(row[0]));	
+					}
+				}
+			}
+		}
+		catch(Exception e){
+			log.error("Missing heterotic Group file ");
+		}
+		finally{
+			if(csvReader != null){
+				try {
+					csvReader.close();
+				} catch (IOException e) {
+					//eat
+				}
+			}
+		}
+
+		StringBuffer buffer = new StringBuffer();
+		for(Long id : heteroticGroup){
+			buffer.append(String.format(" INSERT INTO #PARENT VALUES(%s) ", id));
+		}
+
+		parameters.put("lines", buffer.toString());
+	}
+}

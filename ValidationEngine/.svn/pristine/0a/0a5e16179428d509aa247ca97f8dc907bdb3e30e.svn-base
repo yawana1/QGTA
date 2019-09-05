@@ -1,0 +1,23 @@
+package data;
+
+import java.nio.file.Path;
+
+public class Trait {
+	
+	private String strName;
+	private Path objPath;
+
+	public Trait(String strInName,
+			     Path objInPath) {
+		this.strName = strInName;
+		this.objPath = objInPath;
+	}
+	
+	public String getName() {
+		return this.strName;
+	}
+	
+	public Path getPath() {
+		return this.objPath;
+	}
+}

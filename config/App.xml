@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<App>
+	<logDir>/trialAnalysis/dev/logs</logDir>
+	<reportDirectory>/trialAnalysis/dev/runs</reportDirectory>
+	<winDirectory>\\trialAnalysis\dev\runs</winDirectory>
+	<failedDirectory>/trialAnalysis/dev/failed</failedDirectory>
+	<workDirectory>/trialAnalysis/dev/runs</workDirectory>
+	<heatmapDirectory>/trialAnalysis/dev/heatMap</heatmapDirectory>
+	<modelsDirectory>/trialAnalysis/dev/models</modelsDirectory>
+	<runningDirectory>/trialAnalysis/dev/running</runningDirectory>
+	<sqlDirectory>/trialAnalysis/dev/sql</sqlDirectory>
+	<propertiesDirectory>/trialAnalysis/dev/properties</propertiesDirectory>
+	<jobDefDirectory>/trialAnalysis/dev/jobDef</jobDefDirectory>
+	<asremlDirectory>/trialAnalysis/dev/asreml</asremlDirectory>
+	<runScriptDirectory>/trialAnalysis/dev/current</runScriptDirectory>
+</App>

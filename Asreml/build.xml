@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<project basedir="." name="Asreml" default="dest">
+	<property name="class.dir" value="bin"/>
+	<property name="dist.home" value="${class.dir}"/>
+	<property name="jar.name" value="${dist.home}/asreml.jar"/>
+	
+
+	<target name="dest">		
+		<jar 
+			destfile = "${jar.name}"
+		>
+			<fileset
+				dir="${class.dir}"
+				includes="**/*.class"
+			/>
+			<fileset
+				dir="${class.dir}"
+				includes="**/*.config"
+			/>
+		</jar>
+	</target>
+</project>

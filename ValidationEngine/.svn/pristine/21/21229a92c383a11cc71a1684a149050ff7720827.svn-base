@@ -1,0 +1,150 @@
+package io;
+
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+import data.Model;
+import data.Trait;
+import data.Trial;
+
+public class WorkDirectorySimpleFileVisitor extends SimpleFileVisitor<Path> {
+	
+	static Logger objLogger = Logger.getLogger(WorkDirectorySimpleFileVisitor.class.getName());
+	private List<Trial> lstTrials;
+	private String strSeasonName;
+	
+	public WorkDirectorySimpleFileVisitor(int intInTrialsCapacity,
+			                              String strInSeasonName) throws Exception {
+		this.lstTrials = new ArrayList<Trial>(intInTrialsCapacity);
+		this.strSeasonName = strInSeasonName;
+	}
+	
+	@Override public FileVisitResult preVisitDirectory(Path objInDirectoryPath,
+            										   BasicFileAttributes objInBasicFileAttributes)  throws IOException {
+		if (!(objInDirectoryPath.getFileName().toString().startsWith("ARCHIVE_"))) {
+			return FileVisitResult.CONTINUE;
+		}
+		else {
+			return FileVisitResult.SKIP_SUBTREE;
+		}
+	}
+
+	@Override public FileVisitResult visitFile(Path objInFilePath,
+		                                       BasicFileAttributes objInBasicFileAttributes) throws IOException {
+		String strFilePath;
+		
+		strFilePath = objInFilePath.toString();
+		if ((strFilePath.contains("/" + this.strSeasonName + "/")) &&
+			(strFilePath.endsWith("asreml.asr"))) {
+			this.getDirectoryEnvironment(objInFilePath);
+		}
+		
+		return FileVisitResult.CONTINUE;
+	}
+	
+	private void getDirectoryEnvironment(Path objInFilePath) {
+		String strFilePath; 
+		String[] strArrayLineParts;
+		Path objTraitPath;
+		String strTrialName;
+		Path objModelPath;
+		String strModelName;
+		Path objTrialPath;
+		String strTraitName;
+		Trial objTrial;
+		int intTrialIndex;
+		Model objModel;
+		int intModelIndex;
+		Trait objTrait;
+		
+		strFilePath = objInFilePath.toString();
+		if (3 <= (strFilePath.toString().split("\\/").length)) {
+			////////////////////////////////////////
+			// Trial/Model/Trait                    
+			// Example: XA3752WW/prep_2yd/moisture  
+			////////////////////////////////////////
+			// Trait 
+			//////////
+			objTraitPath = objInFilePath.getParent();
+			strArrayLineParts = objTraitPath.toString().split("\\/");
+			strTraitName = strArrayLineParts[strArrayLineParts.length - 1];
+
+			//////////
+			// Model  
+			//////////
+			objModelPath = objTraitPath.getParent();
+			strArrayLineParts = objModelPath.toString().split("\\/");
+			strModelName = strArrayLineParts[strArrayLineParts.length - 1];
+
+			//////////
+			// Trial  
+			//////////
+			objTrialPath = objModelPath.getParent();
+			strArrayLineParts = objTrialPath.toString().split("\\/");
+			strTrialName = strArrayLineParts[strArrayLineParts.length - 1];
+
+			/////////////////
+			// Trial Object    
+			/////////////////
+			objTrial = new Trial(strTrialName,
+					             objTrialPath);
+			if (!(this.lstTrials.contains(objTrial))) {
+				this.lstTrials.add(objTrial);
+				objLogger.info("Processing a new trial: " + objTrial.getTrialName() + 
+						       "...");
+			}	 
+			intTrialIndex = this.lstTrials.indexOf(objTrial);
+			objTrial = this.lstTrials.get(intTrialIndex);
+
+			/////////////////
+			// Model Object    
+			/////////////////
+			objModel = new Model(strModelName,
+			                     objModelPath);
+			if (!(objTrial.getModels().contains(objModel))) {
+				this.lstTrials.get(intTrialIndex).addModel(objModel);
+				objLogger.info("Processing a new model: " + objModel.getName() + 
+						       " in the trial: " + objTrial.getTrialName() +
+						       "...");
+			}	 
+			intModelIndex = this.lstTrials.get(intTrialIndex).getModels().indexOf(objModel);
+			objModel = this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex);
+				
+			/////////////////
+			// Trait Object    
+			/////////////////
+			objTrait = new Trait(strTraitName,
+                                 objTraitPath);				
+			if (!(objModel.getTraits().contains(objTrait))) {
+				this.lstTrials.get(intTrialIndex).getModels().get(intModelIndex).addTrait(objTrait);
+				objLogger.info("Processing a new trait: " + objTrait.getName() + 
+						       " in the model: " + objModel.getName() +
+						       " in the trial: " + objTrial.getTrialName() +
+						       "...");
+			}
+			else {
+				objLogger.error("The trait, " + strTraitName + 
+						        ", is repeated in " + objInFilePath);
+				throw new RuntimeException("The trait, " + strTraitName + 
+				                           ", is repeated in " + objInFilePath);
+			}
+		}
+		else {
+			objLogger.error(objInFilePath.toString() + 
+					        " seems not having the three concepts: trial, model, and trait");
+			throw new RuntimeException(objInFilePath.toString() + 
+					                   " seems not having the three concepts: trial, model, and trait");
+		}		
+	} 
+
+	public List<Trial> getTrials() {
+		return this.lstTrials;
+	}
+}

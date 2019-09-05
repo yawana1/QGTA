@@ -1,0 +1,60 @@
+package io;
+
+import java.io.IOException;
+import java.lang.Exception;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.log4j.Logger;
+
+import asreml.Trait;
+
+public class WorkDirectorySimpleFileVisitor extends SimpleFileVisitor<Path> {
+	
+	static Logger objLogger = Logger.getLogger(WorkDirectorySimpleFileVisitor.class.getName());
+	public List<Path> lstPaths;
+	public List<Trait> lstTraits;	
+	
+	public WorkDirectorySimpleFileVisitor() throws Exception {
+		this.lstPaths = new ArrayList<Path>();
+		this.lstTraits = new ArrayList<Trait>();
+	}
+	
+	@Override public FileVisitResult visitFile(Path objInFilePath,
+		                                       BasicFileAttributes objInBasicFileAttributes) throws IOException {
+		String strFilePath;
+		String[] strArrayLineParts;
+		String strTraitName;
+		Trait objTrait;
+
+		//System.out.println("Visiting the file: " + objInFilePath + "...");
+		
+		strFilePath = objInFilePath.toString();
+		if (strFilePath.endsWith(".asr")) {
+			this.lstPaths.add(objInFilePath);
+			strArrayLineParts = strFilePath.split("\\/");
+			strTraitName = strArrayLineParts[strArrayLineParts.length - 2].toLowerCase();
+			objTrait = new Trait(strTraitName,
+					             0);
+			if (!(this.lstTraits.contains(objTrait))) {
+				//System.out.println("Adding the trait:" + objTrait.getName() + "...");				
+				this.lstTraits.add(objTrait);
+			}
+		}
+		
+		return FileVisitResult.CONTINUE;
+	}
+	
+	@Override public FileVisitResult preVisitDirectory(Path objInDirectoryPath,
+                                                       BasicFileAttributes objInBasicFileAttributes)  throws IOException {
+		//System.out.println("Visiting the directory: " + objInDirectoryPath + "...");
+
+		return FileVisitResult.CONTINUE;
+	}
+}
+
+ 

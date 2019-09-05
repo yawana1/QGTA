@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Sessions>
+	<dataSources>
+		<dataSources>
+			<!-- one per crop -->
+			<TADataSource>
+				<crop>corn</crop>
+				<variety>
+					<name>corn_tranactional</name>
+					<server>server</server>
+					<userName>username</userName>
+					<password>password</password>
+				</variety>
+				<varietyRep>
+					<name>corn_readonly</name>
+					<server>server</server>
+					<userName>username</userName>
+					<password>password</password>
+				</varietyRep>
+				<vat>
+					<name>VAT</name>
+					<server>server</server>
+					<userName>username</userName>
+					<password>password</password>
+				</vat>
+				<markerDB>
+					<name>markerDB</name>
+					<server>server</server>
+					<userName>username</userName>
+					<password>password</password>
+				</markerDB>
+			</TADataSource>
+		</dataSources>
+	</dataSources>
+</Sessions>
