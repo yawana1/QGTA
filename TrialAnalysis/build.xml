@@ -3,7 +3,7 @@
 	<tstamp/>
 	<property name="dist.home" value="/trialAnalysis/dev"/> <!-- Default -->
 	<property name="jar.name" value="trialAnalysis.jar"/> <!-- Default -->
-	<property name="main.class" value="main.Main2"/>
+	<property name="main.class" value="main.Main"/>
 	<property name="current.home" value="${dist.home}/current"/>
 	<property name="archive.home" value="${dist.home}/archive"/>
 	<property name="archive.name" value="${dist.home}/archive/${DSTAMP}${TSTAMP}.zip"/>
