@@ -385,6 +385,7 @@
           <filters>
             <entry>
               <String>$genoType</String>
+			  <int>0</int>
             </entry>
           </filters>
           <statGroups>
