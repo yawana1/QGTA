@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<App>
-	<logDir>/home/Scott Smith/tmp/logs</logDir>
-	<reportDirectory>/home/Scott Smith/tmp/reports</reportDirectory>
-	<winDirectory>\\dasnas01\ifs\data\indy\rd\home\Scott Smith\tmp\report</winDirectory>
-	<workDirectory>/home/Scott Smith/tmp/work</workDirectory>
-	<propertiesDirectory>/share/data/QG/trialAnalysis/dev/properties</propertiesDirectory>
-</App>

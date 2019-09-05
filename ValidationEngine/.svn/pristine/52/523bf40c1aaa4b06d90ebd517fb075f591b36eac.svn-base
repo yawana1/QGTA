@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<App>
-	<logDir>/data/QG/trialAnalysis/dev/logs</logDir>
-	<reportDirectory>/data/QG/trialAnalysis/dev/runs</reportDirectory>
-	<workDirectory>/data/QG/trialAnalysis/dev/runs</workDirectory>
-</App>
