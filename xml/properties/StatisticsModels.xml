@@ -6,5 +6,9 @@
 			<name>anova</name>
 			<file>anova.xml</file>
 		</StatModel>
+		<StatModel>
+			<name>randomEffectModel</name>
+			<file>randomEffectExample.xml</file>
+		</StatModel>
 	</models>
 </StatModels>
