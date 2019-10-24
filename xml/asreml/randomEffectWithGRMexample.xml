@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AsremlModel>
+	<title>Random Effect Model</title>
+	<grms>
+		<grms>
+			<!-- Can have any number of AsrmelGrm -->
+			<!-- Set the random effect sourceNum to the index number in the list of grms.  sourceNum=1 means the first AsremlGrm in the list -->
+			<AsremlGrm>
+				<grmFile>genoType.grm</grmFile> <!-- The name of the grm file in the working folder -->
+				<asd>true</asd>
+			</AsremlGrm>
+		</grms>
+	</grms>
+	<qualifiers>
+		<qualifiers>
+			<AsremlQualifier>
+				<name>!AISINGULARITIES</name>
+				<value>0</value>
+			</AsremlQualifier>
+			<AsremlQualifier>
+				<name>!SKIP</name>
+				<value>0</value>
+			</AsremlQualifier>
+			<AsremlQualifier>
+				<name>!MAXIT</name>
+				<value>1000</value>
+			</AsremlQualifier>
+			<AsremlQualifier>
+				<name>!EXTRA</name>
+				<value>2</value>
+			</AsremlQualifier>
+			<AsremlQualifier>
+				<name>!TXTFORM</name>
+				<value>2</value>
+			</AsremlQualifier>
+			<AsremlQualifier>
+				<name>!MVINCLUDE</name>
+				<value>0</value>
+			</AsremlQualifier>
+			<AsremlQualifier>
+				<name>!FCON</name>
+				<value>0</value>
+			</AsremlQualifier>
+			<AsremlQualifier>
+				<name>!DDF</name>
+				<value>0</value>
+			</AsremlQualifier>
+		</qualifiers>
+	</qualifiers>
+	<fixedEffects>
+		<fixedEffects>
+			<AsremlFixedEffect>
+				<name>$environment</name>
+			</AsremlFixedEffect>
+		</fixedEffects>
+	</fixedEffects>
+	<randomEffects>
+		<randomEffects>
+			<AsremlRandomEffect>
+				<name>$genoType</name>
+				<structures>
+					<AsremlRandomEffectStructure>
+						 <name>$genoType</name>
+						 <sourceNum>1</sourceNum> <!-- This number equals the position in the list of grms.  1 equals the first grm in the list-->
+						 <startValue>0.1</startValue>
+					</AsremlRandomEffectStructure>
+				</structures>
+			</AsremlRandomEffect>
+		</randomEffects>
+	</randomEffects>
+	<tabs>
+		<tabs>
+			<AsremlTab>
+				<factors>
+					<String>$genoType</String>
+				</factors>
+			</AsremlTab>
+			<AsremlTab>
+				<factors>
+					<String>$environment</String>
+				</factors>
+			</AsremlTab>
+			<AsremlTab>
+				<factors>
+					<String>$environment</String>
+					<String>$genoType</String>
+				</factors>
+			</AsremlTab>
+		</tabs>
+	</tabs>
+</AsremlModel>
