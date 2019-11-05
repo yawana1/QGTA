@@ -33,12 +33,27 @@
 			<outlier>3.0</outlier>
 		</Trait>
 		<Trait>
+			<name>GrainYield</name>
+			<varietyName>yield</varietyName>
+			<vatName>yield</vatName>
+			<direction>-1</direction>
+			<outlier>3.0</outlier>
+		</Trait>
+		<Trait>
 			<name>moisture</name>
 			<varietyName>moisture</varietyName>
 			<vatName>moisture</vatName>
 			<direction>1</direction>
 			<outlier>3.5</outlier>
 		</Trait>
+		<Trait>
+			<name>GrainMoisture</name>
+			<varietyName>moisture</varietyName>
+			<vatName>moisture</vatName>
+			<direction>1</direction>
+			<outlier>3.5</outlier>
+		</Trait>
+		GrainMoisture
 		<Trait>
 			<name>drop_ear</name>
 			<varietyName>fb.c_drop_ear</varietyName>
@@ -66,6 +81,13 @@
 		</Trait>
 		<Trait>
 			<name>plant_ht</name>
+			<varietyName>fb.c_plant_ht</varietyName>
+			<vatName>plant_ht</vatName>
+			<direction>1</direction>
+			<outlier>3.0</outlier>
+		</Trait>
+		<Trait>
+			<name>PlantHeight</name>
 			<varietyName>fb.c_plant_ht</varietyName>
 			<vatName>plant_ht</vatName>
 			<direction>1</direction>

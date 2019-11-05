@@ -115,7 +115,7 @@ public class ReportOutput {
 		}
 		else {
 			extension = "output_flat_file";
-			result = trial.getReportDirectory(win)+"/"+sumType+trial.getFileExtention(extension);
+			result = Paths.get(trial.getReportDirectory(win), sumType+trial.getFileExtention(extension)).toString();
 		}
 		return result;
 	}	

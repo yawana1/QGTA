@@ -370,6 +370,9 @@ public class AsremlModel implements Cloneable {
 					catch(AccessDeniedException e){
 						//eat acess exceptions for permissions
 					}
+					catch(UnsupportedOperationException e) {
+						
+					}
 					
 					Path file = dir.resolve(AsConst.prefix.value() + AsConst.modelSuffix.value());
 					String fileContents = toString();

@@ -291,7 +291,7 @@ public class TrialAnalysisJobProcess {
 		files = dir.list(filter);
 		List<String> xmls = new ArrayList<String>();
 		for(String file : files){
-			xmls.add(App.INSTANCE.getModelsDirectory()+"/"+file);
+			xmls.add(Paths.get(App.INSTANCE.getModelsDirectory(),file).toString());
 		}
 		return xmls;
 	}
@@ -383,6 +383,9 @@ public class TrialAnalysisJobProcess {
 			}
 			catch(AccessDeniedException e){
 				//eat access deined for setting permissions
+			}
+			catch(UnsupportedOperationException e) {
+				//skip windows
 			}
 		}
 		
@@ -515,9 +518,9 @@ public class TrialAnalysisJobProcess {
 			}
 			trial.setAnalysisState(jobDef.getAnalysisState());
 			trial.setAnalysisPeopleId(job.getAnalysisPeopleId());
-			trial.setSqlTemplateFile(App.INSTANCE.getSqlDirectory() + "/" + trial.getSqlTemplateFile());
+			trial.setSqlTemplateFile(Paths.get(App.INSTANCE.getSqlDirectory(), trial.getSqlTemplateFile()).toString());
 			if (trial.getXlsColumnFile() != null) {
-				trial.setXlsColumnFile(App.INSTANCE.getPropertiesDirectory() + "/" + trial.getXlsColumnFile());
+				trial.setXlsColumnFile(Paths.get(App.INSTANCE.getPropertiesDirectory(), trial.getXlsColumnFile()).toString());
 			}
 			trial.setConcurrentProcessMax(TrialAnalysisJobProcess.concurrentProcessMax(trial.getType()));
 		} catch (Exception e) {

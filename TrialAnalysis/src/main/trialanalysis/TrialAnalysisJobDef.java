@@ -168,8 +168,8 @@ public class TrialAnalysisJobDef {
 						String sqlFile = jobDef.getSqlFile();
 						jobDef.setSqlFile(sqlFile.replace("pheno", "pheno.updated"));
 					}
-					jobDef.setSqlFile(jobDefDir + "/" + jobDef.getSqlFile());
-					jobDef.setTrialFile(jobDefDir + "/" + jobDef.getTrialFile());
+					jobDef.setSqlFile(Paths.get(jobDefDir,jobDef.getSqlFile()).toString());
+					jobDef.setTrialFile(Paths.get(jobDefDir,jobDef.getTrialFile()).toString());
 					
 					List<Trial> trials = jobDefProcessor.processJobDef(jobDef, exps);
 
@@ -230,7 +230,7 @@ public class TrialAnalysisJobDef {
 		
 		List<String> xmls = new ArrayList<String>(files.size());
 		for(String file : files){
-			xmls.add(jobDefDir+"/"+file);
+			xmls.add(Paths.get(jobDefDir,file).toString());
 		}
 		return xmls;
 	}

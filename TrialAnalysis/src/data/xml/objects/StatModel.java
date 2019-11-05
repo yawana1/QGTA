@@ -1,5 +1,9 @@
 package data.xml.objects;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 import org.apache.log4j.Logger;
 
 /**
@@ -52,7 +56,10 @@ public class StatModel {
 	 */
 	public Object readResolve(){
 		StatModel model = this;
-		model.setFile(App.INSTANCE.getAsremlDirectory() + '/' + model.getFile());
+		//TODO fix hack
+		if(!model.getFile().contains(":")){
+			model.setFile(Paths.get(App.INSTANCE.getAsremlDirectory(), model.getFile()).toString());
+		}
 		if(null != StatModels.INSTANCE.getModels()){
 			model = StatModels.INSTANCE.get(name);
 		}

@@ -157,7 +157,12 @@ public class XML {
 	}
 
 	private void recurse(Field field, List<String> visited){
-		field.setAccessible(true);  //access private memebers
+		try {
+			field.setAccessible(true);  //access private memebers
+		}
+		catch(Exception e) {
+			//eat errors
+		}
 		if(field.getGenericType() instanceof Class<?>){
 			Class<?> c = (Class<?>)field.getGenericType();
 			if(!isPrimitive(c)){

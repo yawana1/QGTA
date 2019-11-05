@@ -239,7 +239,7 @@ public class TrialProcessor {
 		
 		if(trial.useValuesFile()){
 			try {
-				data = new ValueMatrix(trial.getColumnNames()).load(trial.getTrialWorkDirectory() + "/" + trial.getValuesFile());
+				data = new ValueMatrix(trial.getColumnNames()).load(Paths.get(trial.getTrialWorkDirectory(), trial.getValuesFile()).toString());
 			} catch (IOException e) {
 				log.error("", e);
 			}
@@ -439,7 +439,7 @@ public class TrialProcessor {
 					//update grm directory since xml has only the file without the full path
 					if(null != asremlModel.getGrms() && !asremlModel.getGrms().isEmpty()){
 						for(AsremlGrm grm : asremlModel.getGrms().getGrms()){
-							grm.setGrmFile(trial.getTrialWorkDirectory() + "/" + grm.getGrmFile());
+							grm.setGrmFile(Paths.get(trial.getTrialWorkDirectory(), grm.getGrmFile()).toString());
 						}
 					}
 

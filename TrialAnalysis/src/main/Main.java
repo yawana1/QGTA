@@ -101,8 +101,8 @@ public class Main {
 					//setup the logger
 					//since file is passed in run this trial.xml
 					if(!Strings.isNullOrEmpty(file)){
-						String[] name = file.split("/");
-						setLogger(name[name.length-1].split("\\.")[0], name[name.length-1].split("\\.")[1],file.contains("step2.xml"));
+						String name = Paths.get(file).getFileName().toString();
+						setLogger(name.split("\\.")[0], name.split("\\.")[1],file.contains("step2.xml"));
 						log = Logger.getLogger(Main.class.getName()); //load logger after configured
 						new TrialAnalysisJobProcess(useArchive, args).start(file, false);
 					}

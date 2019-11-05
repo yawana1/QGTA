@@ -592,6 +592,9 @@ public class Funcs {
 		catch(FileSystemException f){
 			
 		}
+		catch(UnsupportedOperationException e) {
+			//windows machines
+		}
 		
 		return path;
 	}

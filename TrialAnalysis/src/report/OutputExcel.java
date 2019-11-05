@@ -3,6 +3,7 @@ package report;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -37,9 +38,10 @@ public class OutputExcel implements Output{
 	public OutputExcel(){}
 
 	public void runOutput(Vat vat, Trial trial, ReportOutput reportOutput) {
-		String fileName = trial.getReportDirectory(false) +"/"+
-							Trial.cleanName(trial.getTrialName())+
-							trial.getFileExtention("output_spreadsheet_file");
+		String fileName = Paths.get(trial.getReportDirectory(false)
+							,Trial.cleanName(trial.getTrialName())
+							,trial.getFileExtention("output_spreadsheet_file"))
+							.toString();
 		writeXls(vat,reportOutput,trial, fileName);
 	}
 	

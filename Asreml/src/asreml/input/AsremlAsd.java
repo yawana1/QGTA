@@ -1,5 +1,6 @@
 package asreml.input;
 
+import java.nio.file.Paths;
 import java.util.List;
 
 import asreml.AsremlGlobals.AsConst;
@@ -54,6 +55,6 @@ public class AsremlAsd {
 		this.directory = directory;
 		this.traits = traits;
 		this.test = test;
-		filename = directory+"/"+AsConst.prefix.value() + AsConst.asdSuffix.value();
+		filename = Paths.get(directory,AsConst.prefix.value() + AsConst.asdSuffix.value()).toString();
 	}
 }
